@@ -3,6 +3,12 @@ using medical_be.Models;
 
 namespace medical_be.DTOs;
 
+public enum UserRegistrationType
+{
+    Patient = 0,
+    Doctor = 1
+}
+
 public class RegisterDto
 {
     [Required]
@@ -36,6 +42,9 @@ public class RegisterDto
 
     [MaxLength(500)]
     public string? Address { get; set; }
+
+    [Required]
+    public UserRegistrationType UserRole { get; set; } = UserRegistrationType.Patient;
 }
 
 public class LoginDto

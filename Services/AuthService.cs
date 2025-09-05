@@ -165,7 +165,21 @@ public class AuthService : IAuthService
 		};
 
 		var result = await _userManager.CreateAsync(user, registerDto.Password);
-		if (!result.Succeeded) return null;
+		if (!result.Succeeded) 
+		{
+			_logger.LogWarning("User registration failed for {Email}. Errors: {Errors}", 
+				registerDto.Email, string.Join("; ", result.Errors.Select(e => e.Description)));
+			return null;
+		}
+
+		// Assign role based on UserRole parameter
+		var roleName = registerDto.UserRole == medical_be.DTOs.UserRegistrationType.Doctor ? "Doctor" : "Patient";
+		var roleResult = await _userManager.AddToRoleAsync(user, roleName);
+		if (!roleResult.Succeeded)
+		{
+			_logger.LogWarning("Failed to assign role {Role} to user {Email}. Errors: {Errors}", 
+				roleName, registerDto.Email, string.Join("; ", roleResult.Errors.Select(e => e.Description)));
+		}
 
 		var roles = await _userManager.GetRolesAsync(user);
 		var token = _jwtService.GenerateToken(user, roles);

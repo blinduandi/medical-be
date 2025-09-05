@@ -35,6 +35,9 @@ public class RegisterDtoValidator : AbstractValidator<RegisterDto>
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Invalid gender value");
 
+        RuleFor(x => x.UserRole)
+            .IsInEnum().WithMessage("Invalid user role value");
+
         RuleFor(x => x.PhoneNumber)
             .MaximumLength(20).WithMessage("Phone number cannot exceed 20 characters");
 
