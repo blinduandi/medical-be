@@ -1,0 +1,332 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using medical_be.Data;
+using medical_be.Models;
+using medical_be.DTOs;
+using medical_be.Services;
+using medical_be.Shared.Interfaces;
+using medical_be.Extensions;
+using AutoMapper;
+
+namespace medical_be.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class PatientController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly IMapper _mapper;
+        private readonly IAuditService _auditService;
+        private readonly ILogger<PatientController> _logger;
+
+        public PatientController(
+            ApplicationDbContext context,
+            IMapper mapper,
+            IAuditService auditService,
+            ILogger<PatientController> logger)
+        {
+            _context = context;
+            _mapper = mapper;
+            _auditService = auditService;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Search patients by IDNP
+        /// </summary>
+        [HttpPost("search")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> SearchByIDNP([FromBody] PatientSearchDto searchDto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(searchDto.IDNP))
+                {
+                    return BadRequest("IDNP is required");
+                }
+
+                var patient = await _context.Users
+                    .Where(u => u.IDNP == searchDto.IDNP)
+                    .Select(u => new PatientProfileDto
+                    {
+                        Id = u.Id,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email ?? string.Empty,
+                        PhoneNumber = u.PhoneNumber ?? string.Empty,
+                        IDNP = u.IDNP,
+                        BloodType = u.BloodType,
+                        DateOfBirth = u.DateOfBirth,
+                        Address = u.Address,
+                        IsActive = u.IsActive
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (patient == null)
+                {
+                    return NotFound("Patient not found");
+                }
+
+                // Audit log
+                await _auditService.LogAuditAsync(User.GetUserId(), "PatientSearch", $"Searched patient with IDNP: {searchDto.IDNP}", "Patient", null, Request.GetClientIpAddress());
+
+                return Ok(patient);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching patient by IDNP: {IDNP}", searchDto.IDNP);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Get patient's visit records
+        /// </summary>
+        [HttpGet("{patientId}/visits")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GetVisitRecords(string patientId)
+        {
+            try
+            {
+                var visits = await _context.VisitRecords
+                    .Where(v => v.PatientId == patientId)
+                    .Include(v => v.Doctor)
+                    .OrderByDescending(v => v.VisitDate)
+                    .Select(v => new VisitRecordDto
+                    {
+                        Id = v.Id,
+                        PatientId = v.PatientId,
+                        DoctorId = v.DoctorId,
+                        DoctorName = v.Doctor.FirstName + " " + v.Doctor.LastName,
+                        VisitDate = v.VisitDate,
+                        Diagnosis = v.Diagnosis,
+                        Treatment = v.Treatment,
+                        Notes = v.Notes,
+                        VisitType = v.VisitType.ToString(),
+                        CreatedAt = v.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(visits);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting visit records for patient: {PatientId}", patientId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Create new visit record
+        /// </summary>
+        [HttpPost("{patientId}/visits")]
+        [Authorize(Roles = "Doctor")]
+    public async Task<IActionResult> CreateVisitRecord(string patientId, [FromBody] CreateVisitRecordDto visitDto)
+        {
+            try
+            {
+                var doctorId = User.GetUserId();
+                
+                var visitRecord = new VisitRecord
+                {
+                    PatientId = patientId,
+                    DoctorId = doctorId,
+                    VisitDate = visitDto.VisitDate,
+                    Diagnosis = visitDto.Diagnosis,
+                    Treatment = visitDto.Treatment,
+                    Notes = visitDto.Notes ?? string.Empty,
+                    VisitType = Enum.Parse<VisitType>(visitDto.VisitType),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.VisitRecords.Add(visitRecord);
+                await _context.SaveChangesAsync();
+
+                // Audit log
+                await _auditService.LogAuditAsync(
+                    doctorId,
+                    "VisitRecordCreated",
+                    $"Created visit record for patient: {patientId}",
+                    "VisitRecord",
+                    visitRecord.Id,
+                    Request.GetClientIpAddress()
+                );
+
+                var result = _mapper.Map<VisitRecordDto>(visitRecord)!;
+                return CreatedAtAction(nameof(GetVisitRecords), new { patientId }, result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating visit record for patient: {PatientId}", patientId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Get patient's vaccinations
+        /// </summary>
+        [HttpGet("{patientId}/vaccinations")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GetVaccinations(string patientId)
+        {
+            try
+            {
+                var vaccinations = await _context.Vaccinations
+                    .Where(v => v.PatientId == patientId)
+                    .Include(v => v.AdministeredBy)
+                    .OrderByDescending(v => v.DateAdministered)
+                    .Select(v => new VaccinationDto
+                    {
+                        Id = v.Id,
+                        PatientId = v.PatientId,
+                        VaccineName = v.VaccineName,
+                        DateAdministered = v.DateAdministered,
+                        AdministeredById = v.AdministeredById,
+                        DoctorName = v.AdministeredBy != null ? (v.AdministeredBy.FirstName + " " + v.AdministeredBy.LastName) : string.Empty,
+                        BatchNumber = v.BatchNumber,
+                        Notes = v.Notes,
+                        CreatedAt = v.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(vaccinations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting vaccinations for patient: {PatientId}", patientId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Add vaccination record
+        /// </summary>
+        [HttpPost("{patientId}/vaccinations")]
+        [Authorize(Roles = "Doctor")]
+    public async Task<IActionResult> AddVaccination(string patientId, [FromBody] CreateVaccinationDto vaccinationDto)
+        {
+            try
+            {
+                var doctorId = User.GetUserId();
+
+                var vaccination = new Vaccination
+                {
+                    PatientId = patientId,
+                    VaccineName = vaccinationDto.VaccineName,
+                    DateAdministered = vaccinationDto.DateAdministered,
+                    AdministeredById = doctorId,
+                    BatchNumber = vaccinationDto.BatchNumber,
+                    Notes = vaccinationDto.Notes,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Vaccinations.Add(vaccination);
+                await _context.SaveChangesAsync();
+
+                // Audit log
+                await _auditService.LogAuditAsync(
+                    doctorId,
+                    "VaccinationAdded",
+                    $"Added vaccination {vaccinationDto.VaccineName} for patient: {patientId}",
+                    "Vaccination",
+                    vaccination.Id,
+                    Request.GetClientIpAddress()
+                );
+
+                var result = _mapper.Map<VaccinationDto>(vaccination)!;
+                return CreatedAtAction(nameof(GetVaccinations), new { patientId }, result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding vaccination for patient: {PatientId}", patientId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Get patient's allergies
+        /// </summary>
+        [HttpGet("{patientId}/allergies")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GetAllergies(string patientId)
+        {
+            try
+            {
+                var allergies = await _context.Allergies
+                    .Where(a => a.PatientId == patientId)
+                    .Include(a => a.RecordedBy)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Select(a => new AllergyDto
+                    {
+                        Id = a.Id,
+                        PatientId = a.PatientId,
+                        AllergenName = a.AllergenName,
+                        Severity = a.Severity.ToString(),
+                        Reaction = a.Reaction,
+                        RecordedById = a.RecordedById,
+                        Notes = a.Notes,
+                        CreatedAt = a.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(allergies);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting allergies for patient: {PatientId}", patientId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Add allergy record
+        /// </summary>
+        [HttpPost("{patientId}/allergies")]
+        [Authorize(Roles = "Doctor")]
+    public async Task<IActionResult> AddAllergy(string patientId, [FromBody] CreateAllergyDto allergyDto)
+        {
+            try
+            {
+                var doctorId = User.GetUserId();
+
+                var allergy = new Allergy
+                {
+                    PatientId = patientId,
+                    AllergenName = allergyDto.AllergenName,
+                    Severity = Enum.Parse<AllergySeverity>(allergyDto.Severity),
+                    Reaction = allergyDto.Reaction,
+                    RecordedById = doctorId,
+                    Notes = allergyDto.Notes,
+                    DiagnosedDate = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Allergies.Add(allergy);
+                await _context.SaveChangesAsync();
+
+                // Audit log
+                await _auditService.LogAuditAsync(
+                    doctorId,
+                    "AllergyAdded",
+                    $"Added allergy {allergyDto.AllergenName} for patient: {patientId}",
+                    "Allergy",
+                    allergy.Id,
+                    Request.GetClientIpAddress()
+                );
+
+                var result = _mapper.Map<AllergyDto>(allergy)!;
+                return CreatedAtAction(nameof(GetAllergies), new { patientId }, result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding allergy for patient: {PatientId}", patientId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+    }
+}
