@@ -181,17 +181,14 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddCorsPolicy(this IServiceCollection services, IConfiguration configuration)
     {
-        var configService = new ConfigurationService(configuration);
-        var allowedOrigins = configService.GetAllowedOrigins();
-        
         services.AddCors(options =>
         {
+            // Development policy - very permissive for testing
             options.AddPolicy("AllowSpecificOrigins", policy =>
             {
-                policy.WithOrigins(allowedOrigins)
+                policy.AllowAnyOrigin()
                       .AllowAnyHeader()
-                      .AllowAnyMethod()
-                      .AllowCredentials();
+                      .AllowAnyMethod();
             });
         });
 

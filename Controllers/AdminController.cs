@@ -19,7 +19,7 @@ namespace medical_be.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly RoleManager<Role> _roleManager;
         private readonly IMapper _mapper;
         private readonly IAuditService _auditService;
         private readonly ILogger<AdminController> _logger;
@@ -27,7 +27,7 @@ namespace medical_be.Controllers
         public AdminController(
             ApplicationDbContext context,
             UserManager<User> userManager,
-            RoleManager<IdentityRole> roleManager,
+            RoleManager<Role> roleManager,
             IMapper mapper,
             IAuditService auditService,
             ILogger<AdminController> logger)
@@ -38,6 +38,41 @@ namespace medical_be.Controllers
             _mapper = mapper;
             _auditService = auditService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Get users count - for testing database connectivity (temporary, no auth required)
+        /// </summary>
+        [HttpGet("test/users-count")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUsersCount()
+        {
+            try
+            {
+                var totalUsers = await _context.Users.CountAsync();
+                var users = await _context.Users
+                    .Select(u => new
+                    {
+                        u.Id,
+                        u.FirstName,
+                        u.LastName,
+                        u.Email,
+                        u.IsActive,
+                        u.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    TotalUsers = totalUsers,
+                    Users = users
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting users count");
+                return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+            }
         }
 
         /// <summary>

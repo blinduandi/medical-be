@@ -59,7 +59,11 @@ app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 // HTTPS and CORS
-app.UseHttpsRedirection();
+// Disable HTTPS redirection for development to avoid 307 redirects
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowSpecificOrigins");
 
 // Authentication and Authorization

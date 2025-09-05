@@ -36,9 +36,7 @@ public class RegisterDtoValidator : AbstractValidator<RegisterDto>
             .IsInEnum().WithMessage("Invalid gender value");
 
         RuleFor(x => x.PhoneNumber)
-            .Matches(@"^\+?[1-9]\d{1,14}$")
-            .When(x => !string.IsNullOrEmpty(x.PhoneNumber))
-            .WithMessage("Invalid phone number format");
+            .MaximumLength(20).WithMessage("Phone number cannot exceed 20 characters");
 
         RuleFor(x => x.Address)
             .MaximumLength(500).WithMessage("Address cannot exceed 500 characters");
@@ -103,9 +101,7 @@ public class UpdateUserDtoValidator : AbstractValidator<UpdateUserDto>
             .IsInEnum().WithMessage("Invalid gender value");
 
         RuleFor(x => x.PhoneNumber)
-            .Matches(@"^\+?[1-9]\d{1,14}$")
-            .When(x => !string.IsNullOrEmpty(x.PhoneNumber))
-            .WithMessage("Invalid phone number format");
+            .MaximumLength(20).WithMessage("Phone number cannot exceed 20 characters");
 
         RuleFor(x => x.Address)
             .MaximumLength(500).WithMessage("Address cannot exceed 500 characters");
