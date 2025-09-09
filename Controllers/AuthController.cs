@@ -4,12 +4,13 @@ using medical_be.Services;
 using medical_be.Shared.Interfaces;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using medical_be.Controllers.Base;
+using medical_be.Helpers;
 
 namespace medical_be.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController : BaseApiController
 {
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
@@ -25,19 +26,23 @@ public class AuthController : ControllerBase
     {
         try
         {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
             var result = await _authService.RegisterAsync(registerDto);
             if (result == null)
             {
-                return BadRequest(new { message = "Registration failed. Email might already be in use." });
+                return ErrorResponse("Registration failed. Email might already be in use.");
             }
 
             _logger.LogInformation("User registered successfully: {Email}", registerDto.Email);
-            return Ok(result);
+            return SuccessResponse(result, "User registered successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during user registration");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred during registration");
         }
     }
 
@@ -46,19 +51,23 @@ public class AuthController : ControllerBase
     {
         try
         {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
             var result = await _authService.LoginAsync(loginDto);
             if (result == null)
             {
-                return Unauthorized(new { message = "Invalid credentials or account is inactive" });
+                return UnauthorizedResponse("Invalid credentials or account is inactive");
             }
 
             _logger.LogInformation("User logged in successfully: {Email}", loginDto.Email);
-            return Ok(result);
+            return SuccessResponse(result, "Login successful");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during user login");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred during login");
         }
     }
 
@@ -67,19 +76,23 @@ public class AuthController : ControllerBase
     {
         try
         {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
             var result = await _authService.VerifyMfaLoginAsync(verifyMfaDto.Email, verifyMfaDto.Otp);
             if (result == null)
             {
-                return Unauthorized(new { message = "Invalid OTP or user not found" });
+                return UnauthorizedResponse("Invalid OTP or user not found");
             }
 
             _logger.LogInformation("User MFA verification successful: {Email}", verifyMfaDto.Email);
-            return Ok(result);
+            return SuccessResponse(result, "MFA verification successful");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during MFA verification");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred during MFA verification");
         }
     }
 
@@ -89,25 +102,29 @@ public class AuthController : ControllerBase
     {
         try
         {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized(new { message = "User not found" });
+                return UnauthorizedResponse("User not found");
             }
 
             var result = await _authService.ChangePasswordAsync(userId, changePasswordDto);
             if (!result)
             {
-                return BadRequest(new { message = "Failed to change password. Check your current password." });
+                return ErrorResponse("Failed to change password. Check your current password.");
             }
 
             _logger.LogInformation("Password changed successfully for user: {UserId}", userId);
-            return Ok(new { message = "Password changed successfully" });
+            return SuccessResponse(null, "Password changed successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during password change");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred during password change");
         }
     }
 
@@ -120,21 +137,21 @@ public class AuthController : ControllerBase
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized(new { message = "User not found" });
+                return UnauthorizedResponse("User not found");
             }
 
             var user = await _authService.GetUserByIdAsync(userId);
             if (user == null)
             {
-                return NotFound(new { message = "User not found" });
+                return NotFoundResponse("User not found");
             }
 
-            return Ok(user);
+            return SuccessResponse(user, "User information retrieved successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting user information");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred while retrieving user information");
         }
     }
 
@@ -144,25 +161,29 @@ public class AuthController : ControllerBase
     {
         try
         {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized(new { message = "User not found" });
+                return UnauthorizedResponse("User not found");
             }
 
             var result = await _authService.UpdateUserAsync(userId, updateUserDto);
             if (result == null)
             {
-                return BadRequest(new { message = "Failed to update user information" });
+                return ErrorResponse("Failed to update user information");
             }
 
             _logger.LogInformation("User information updated successfully: {UserId}", userId);
-            return Ok(result);
+            return SuccessResponse(result, "User information updated successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating user information");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred while updating user information");
         }
     }
 
@@ -175,16 +196,16 @@ public class AuthController : ControllerBase
             var result = await _authService.AssignRoleAsync(userId, roleName);
             if (!result)
             {
-                return BadRequest(new { message = "Failed to assign role" });
+                return ErrorResponse("Failed to assign role");
             }
 
             _logger.LogInformation("Role {RoleName} assigned to user {UserId}", roleName, userId);
-            return Ok(new { message = "Role assigned successfully" });
+            return SuccessResponse(null, "Role assigned successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error assigning role");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred while assigning role");
         }
     }
 
@@ -197,16 +218,16 @@ public class AuthController : ControllerBase
             var result = await _authService.RemoveRoleAsync(userId, roleName);
             if (!result)
             {
-                return BadRequest(new { message = "Failed to remove role" });
+                return ErrorResponse("Failed to remove role");
             }
 
             _logger.LogInformation("Role {RoleName} removed from user {UserId}", roleName, userId);
-            return Ok(new { message = "Role removed successfully" });
+            return SuccessResponse(null, "Role removed successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing role");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred while removing role");
         }
     }
 
@@ -215,24 +236,23 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
 
             var result = await _authService.GenerateVerificationCodeAsync(dto.Email);
             if (result)
             {
                 _logger.LogInformation("Verification code sent to email: {Email}", dto.Email);
-                return Ok(new { message = "Verification code sent to your email" });
+                return SuccessResponse(null, "Verification code sent to your email");
             }
 
-            return BadRequest(new { message = "Failed to send verification code. Please check if the email is registered." });
+            return ErrorResponse("Failed to send verification code. Please check if the email is registered.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating verification code");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred while generating verification code");
         }
     }
 
@@ -241,26 +261,56 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
 
             var result = await _authService.VerifyCodeAsync(dto.Email, dto.Code);
             
             if (result.IsValid)
             {
                 _logger.LogInformation("Email verification successful for: {Email}", dto.Email);
-                return Ok(result);
+                return SuccessResponse(result, "Email verification successful");
             }
 
             _logger.LogWarning("Email verification failed for: {Email}. Reason: {Message}", dto.Email, result.Message);
-            return BadRequest(result);
+            return ErrorResponse(result.Message ?? "Email verification failed", result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error verifying code");
-            return StatusCode(500, new { message = "Internal server error" });
+            return InternalServerErrorResponse("An error occurred while verifying code");
+        }
+    }
+
+    // Development endpoint to get validation documentation
+    [HttpGet("validation-docs")]
+    public IActionResult GetValidationDocumentation([FromQuery] string? model = null)
+    {
+        try
+        {
+            return model?.ToLower() switch
+            {
+                "register" => ApiResponse.GetValidationDocumentation<RegisterDto>(true),
+                "login" => ApiResponse.GetValidationDocumentation<LoginDto>(true),
+                "changepassword" => ApiResponse.GetValidationDocumentation<ChangePasswordDto>(true),
+                "updateuser" => ApiResponse.GetValidationDocumentation<UpdateUserDto>(true),
+                "getverificationcode" => ApiResponse.GetValidationDocumentation<GetVerificationCodeDto>(true),
+                "verifycode" => ApiResponse.GetValidationDocumentation<VerifyCodeDto>(true),
+                _ => SuccessResponse(new
+                {
+                    availableModels = new[]
+                    {
+                        "register", "login", "changepassword", "updateuser", 
+                        "getverificationcode", "verifycode"
+                    }
+                }, "Available validation documentation models")
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting validation documentation");
+            return InternalServerErrorResponse("An error occurred while retrieving validation documentation");
         }
     }
 }

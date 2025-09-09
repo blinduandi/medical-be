@@ -154,6 +154,7 @@ public class AuthService : IAuthService
 		{
 			UserName = registerDto.Email,
 			Email = registerDto.Email,
+			IDNP = registerDto.IDNP,
 			FirstName = registerDto.FirstName,
 			LastName = registerDto.LastName,
 			PhoneNumber = registerDto.PhoneNumber,

@@ -7,14 +7,14 @@ using medical_be.DTOs;
 using medical_be.Services;
 using medical_be.Shared.Interfaces;
 using medical_be.Extensions;
+using medical_be.Controllers.Base;
 using AutoMapper;
 
 namespace medical_be.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class PatientController : ControllerBase
+    public class PatientController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
@@ -42,9 +42,13 @@ namespace medical_be.Controllers
         {
             try
             {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
                 if (string.IsNullOrWhiteSpace(searchDto.IDNP))
                 {
-                    return BadRequest("IDNP is required");
+                    return ValidationErrorResponse("IDNP is required");
                 }
 
                 var patient = await _context.Users
@@ -66,18 +70,18 @@ namespace medical_be.Controllers
 
                 if (patient == null)
                 {
-                    return NotFound("Patient not found");
+                    return NotFoundResponse("Patient not found");
                 }
 
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), "PatientSearch", $"Searched patient with IDNP: {searchDto.IDNP}", "Patient", null, Request.GetClientIpAddress());
 
-                return Ok(patient);
+                return SuccessResponse(patient, "Patient found successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error searching patient by IDNP: {IDNP}", searchDto.IDNP);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse("An error occurred while searching for patient");
             }
         }
 
@@ -109,12 +113,12 @@ namespace medical_be.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(visits);
+                return SuccessResponse(visits);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting visit records for patient: {PatientId}", patientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -161,7 +165,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating visit record for patient: {PatientId}", patientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -192,12 +196,12 @@ namespace medical_be.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(vaccinations);
+                return SuccessResponse(vaccinations);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting vaccinations for patient: {PatientId}", patientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -243,7 +247,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding vaccination for patient: {PatientId}", patientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -273,12 +277,12 @@ namespace medical_be.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(allergies);
+                return SuccessResponse(allergies);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting allergies for patient: {PatientId}", patientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -325,7 +329,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding allergy for patient: {PatientId}", patientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
     }

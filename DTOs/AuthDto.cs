@@ -44,6 +44,10 @@ public class RegisterDto
     public string? Address { get; set; }
 
     [Required]
+    [MaxLength(13)]
+    public string IDNP { get; set; } = string.Empty;
+
+    [Required]
     public UserRegistrationType UserRole { get; set; } = UserRegistrationType.Patient;
 }
 
@@ -148,5 +152,13 @@ public class VerifyCodeDto
 public class VerificationResponseDto
 {
     public bool IsValid { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
+public class RegistrationResultDto
+{
+    public bool Success { get; set; }
+    public AuthResponseDto? AuthResponse { get; set; }
+    public List<string> Errors { get; set; } = new();
     public string Message { get; set; } = string.Empty;
 }

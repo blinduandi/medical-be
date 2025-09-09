@@ -8,14 +8,15 @@ using medical_be.DTOs;
 using medical_be.Services;
 using medical_be.Shared.Interfaces;
 using medical_be.Extensions;
+using medical_be.Controllers.Base;
 using AutoMapper;
+using System.Linq;
 
 namespace medical_be.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = "Admin")]
-    public class AdminController : ControllerBase
+    public class AdminController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
@@ -62,16 +63,16 @@ namespace medical_be.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(new
+                return SuccessResponse(new
                 {
                     TotalUsers = totalUsers,
                     Users = users
-                });
+                }, "Users data retrieved successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting users count");
-                return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+                return InternalServerErrorResponse("An error occurred while retrieving users data");
             }
         }
 
@@ -137,12 +138,12 @@ namespace medical_be.Controllers
                     TotalPages = (int)Math.Ceiling(totalUsers / (double)pageSize)
                 };
 
-                return Ok(result);
+                return PaginatedResponse(usersWithRoles, page, pageSize, totalUsers, "Users retrieved successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting users");
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse("An error occurred while retrieving users");
             }
         }
 
@@ -154,24 +155,28 @@ namespace medical_be.Controllers
         {
             try
             {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
                 // Check if user already exists
                 var existingUser = await _userManager.FindByEmailAsync(createUserDto.Email);
                 if (existingUser != null)
                 {
-                    return BadRequest("User with this email already exists");
+                    return ErrorResponse("User with this email already exists");
                 }
 
                 // Check IDNP uniqueness
                 var existingIDNP = await _context.Users.FirstOrDefaultAsync(u => u.IDNP == createUserDto.IDNP);
                 if (existingIDNP != null)
                 {
-                    return BadRequest("User with this IDNP already exists");
+                    return ErrorResponse("User with this IDNP already exists");
                 }
 
                 // Validate required fields
                 if (!createUserDto.DateOfBirth.HasValue)
                 {
-                    return BadRequest("Date of birth is required");
+                    return ValidationErrorResponse("Date of birth is required");
                 }
 
                 var user = new User
@@ -192,7 +197,8 @@ namespace medical_be.Controllers
                 var result = await _userManager.CreateAsync(user, createUserDto.Password);
                 if (!result.Succeeded)
                 {
-                    return BadRequest(result.Errors);
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return ValidationErrorResponse("Failed to create user", errors);
                 }
 
                 // Assign role
@@ -205,12 +211,12 @@ namespace medical_be.Controllers
                 await _auditService.LogAuditAsync(User.GetUserId(), "UserCreated", $"Created user: {createUserDto.Email}", "User", null, Request.GetClientIpAddress());
 
                 var userDto = _mapper.Map<PatientProfileDto>(user);
-                return CreatedAtAction(nameof(GetUsers), userDto);
+                return SuccessResponse(userDto, "User created successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating user: {Email}", createUserDto.Email);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse("An error occurred while creating user");
             }
         }
 
@@ -222,10 +228,14 @@ namespace medical_be.Controllers
         {
             try
             {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 // Check IDNP uniqueness (excluding current user)
@@ -235,7 +245,7 @@ namespace medical_be.Controllers
                         .FirstOrDefaultAsync(u => u.IDNP == updateUserDto.IDNP && u.Id != userId);
                     if (existingIDNP != null)
                     {
-                        return BadRequest("User with this IDNP already exists");
+                        return ErrorResponse("User with this IDNP already exists");
                     }
                 }
 
@@ -252,18 +262,19 @@ namespace medical_be.Controllers
                 var result = await _userManager.UpdateAsync(user);
                 if (!result.Succeeded)
                 {
-                    return BadRequest(result.Errors);
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return ErrorResponse("Failed to update user", errors);
                 }
 
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), "UserUpdated", $"Updated user: {user.Email}", "User", null, Request.GetClientIpAddress());
 
-                return NoContent();
+                return SuccessResponse(null, "Operation completed successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating user: {UserId}", userId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -278,7 +289,7 @@ namespace medical_be.Controllers
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 // Check if user has medical records
@@ -302,12 +313,12 @@ namespace medical_be.Controllers
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), hasRecords ? "UserDeactivated" : "UserDeleted", $"{(hasRecords ? "Deactivated" : "Deleted")} user: {user.Email}", "User", null, Request.GetClientIpAddress());
 
-                return NoContent();
+                return SuccessResponse(null, "Operation completed successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting user: {UserId}", userId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -322,30 +333,31 @@ namespace medical_be.Controllers
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 var roleExists = await _roleManager.RoleExistsAsync(assignRoleDto.RoleName);
                 if (!roleExists)
                 {
-                    return BadRequest("Role does not exist");
+                    return ErrorResponse("Role does not exist");
                 }
 
                 var result = await _userManager.AddToRoleAsync(user, assignRoleDto.RoleName);
                 if (!result.Succeeded)
                 {
-                    return BadRequest(result.Errors);
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return ErrorResponse("Failed to assign role", errors);
                 }
 
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), "RoleAssigned", $"Assigned role {assignRoleDto.RoleName} to user: {user.Email}", "User", null, Request.GetClientIpAddress());
 
-                return NoContent();
+                return SuccessResponse(null, "Operation completed successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error assigning role to user: {UserId}", userId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -360,24 +372,25 @@ namespace medical_be.Controllers
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 var result = await _userManager.RemoveFromRoleAsync(user, roleName);
                 if (!result.Succeeded)
                 {
-                    return BadRequest(result.Errors);
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return ErrorResponse("Failed to remove role", errors);
                 }
 
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), "RoleRemoved", $"Removed role {roleName} from user: {user.Email}", "User", null, Request.GetClientIpAddress());
 
-                return NoContent();
+                return SuccessResponse(null, "Operation completed successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error removing role from user: {UserId}", userId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -413,12 +426,12 @@ namespace medical_be.Controllers
                     GeneratedAt = DateTime.UtcNow
                 };
 
-                return Ok(statistics);
+                return SuccessResponse(statistics);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting statistics");
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
     }
