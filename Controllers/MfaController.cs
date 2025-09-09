@@ -7,14 +7,14 @@ using medical_be.Models;
 using medical_be.Services;
 using medical_be.Shared.Interfaces;
 using medical_be.Extensions;
+using medical_be.Controllers.Base;
 using System.ComponentModel.DataAnnotations;
 
 namespace medical_be.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class MfaController : ControllerBase
+    public class MfaController : BaseApiController
     {
         private readonly UserManager<User> _userManager;
         private readonly IOtpService _otpService;
@@ -41,17 +41,21 @@ namespace medical_be.Controllers
         {
             try
             {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
                 var userId = User.GetUserId();
                 var user = await _userManager.FindByIdAsync(userId);
                 
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 if (user.IsMFAEnabled)
                 {
-                    return BadRequest("MFA is already enabled");
+                    return ErrorResponse("MFA is already enabled");
                 }
 
                 // Update phone number if provided
@@ -64,24 +68,24 @@ namespace medical_be.Controllers
                 // Send OTP to verify phone number
                 if (string.IsNullOrEmpty(user.PhoneNumber))
                 {
-                    return BadRequest("Phone number is required for MFA");
+                    return ErrorResponse("Phone number is required for MFA");
                 }
 
                 var otpSent = await _otpService.SendOtpAsync(userId, user.PhoneNumber);
                 if (!otpSent)
                 {
-                    return StatusCode(500, "Failed to send OTP");
+                    return InternalServerErrorResponse( "Failed to send OTP");
                 }
 
                 // Audit log
                 await _auditService.LogAuditAsync(userId, "MfaEnableAttempt", "Attempted to enable MFA", "User", null, Request.GetClientIpAddress());
 
-                return Ok(new { Message = "OTP sent to your phone number. Please verify to enable MFA." });
+                return SuccessResponse(null, "OTP sent to your phone number. Please verify to enable MFA.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error enabling MFA for user: {UserId}", User.GetUserId());
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -98,13 +102,13 @@ namespace medical_be.Controllers
                 
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 var isValidOtp = await _otpService.ValidateOtpAsync(userId, request.Otp);
                 if (!isValidOtp)
                 {
-                    return BadRequest("Invalid or expired OTP");
+                    return ErrorResponse("Invalid or expired OTP");
                 }
 
                 // Enable MFA
@@ -114,12 +118,12 @@ namespace medical_be.Controllers
                 // Audit log
                 await _auditService.LogAuditAsync(userId, "MfaEnabled", "Successfully enabled MFA", "User", null, Request.GetClientIpAddress());
 
-                return Ok(new { Message = "MFA enabled successfully" });
+                return SuccessResponse(null, "MFA enabled successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error verifying MFA setup for user: {UserId}", User.GetUserId());
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -136,34 +140,34 @@ namespace medical_be.Controllers
                 
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 if (!user.IsMFAEnabled)
                 {
-                    return BadRequest("MFA is not enabled");
+                    return ErrorResponse("MFA is not enabled");
                 }
 
                 // Verify password before disabling MFA
                 var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
                 if (!passwordValid)
                 {
-                    return BadRequest("Invalid password");
+                    return ErrorResponse("Invalid password");
                 }
 
                 // Send OTP for additional verification
                 var otpSent = await _otpService.SendOtpAsync(userId, user.PhoneNumber!);
                 if (!otpSent)
                 {
-                    return StatusCode(500, "Failed to send OTP");
+                    return InternalServerErrorResponse( "Failed to send OTP");
                 }
 
-                return Ok(new { Message = "OTP sent to your phone number. Please verify to disable MFA." });
+                return SuccessResponse(null, "OTP sent to your phone number. Please verify to disable MFA.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error disabling MFA for user: {UserId}", User.GetUserId());
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -180,13 +184,13 @@ namespace medical_be.Controllers
                 
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
                 var isValidOtp = await _otpService.ValidateOtpAsync(userId, request.Otp);
                 if (!isValidOtp)
                 {
-                    return BadRequest("Invalid or expired OTP");
+                    return ErrorResponse("Invalid or expired OTP");
                 }
 
                 // Disable MFA
@@ -196,12 +200,12 @@ namespace medical_be.Controllers
                 // Audit log
                 await _auditService.LogAuditAsync(userId, "MfaDisabled", "Successfully disabled MFA", "User", null, Request.GetClientIpAddress());
 
-                return Ok(new { Message = "MFA disabled successfully" });
+                return SuccessResponse(null, "MFA disabled successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error verifying MFA disable for user: {UserId}", User.GetUserId());
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -218,21 +222,21 @@ namespace medical_be.Controllers
                 if (user == null || !user.IsMFAEnabled)
                 {
                     // Don't reveal if user exists or MFA status
-                    return Ok(new { Message = "If MFA is enabled for this account, an OTP has been sent." });
+                    return SuccessResponse(null, "If MFA is enabled for this account, an OTP has been sent.");
                 }
 
                 var otpSent = await _otpService.SendOtpAsync(user.Id, user.PhoneNumber!);
                 if (!otpSent)
                 {
-                    return StatusCode(500, "Failed to send OTP");
+                    return InternalServerErrorResponse( "Failed to send OTP");
                 }
 
-                return Ok(new { Message = "OTP sent to your registered phone number." });
+                return SuccessResponse(null, "OTP sent to your registered phone number.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending login OTP for email: {Email}", request.Email);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -249,10 +253,10 @@ namespace medical_be.Controllers
                 
                 if (user == null)
                 {
-                    return NotFound("User not found");
+                    return NotFoundResponse("User not found");
                 }
 
-                return Ok(new
+                return SuccessResponse(new
                 {
                     MfaEnabled = user.IsMFAEnabled,
                     PhoneNumber = string.IsNullOrEmpty(user.PhoneNumber) ? null : MaskPhoneNumber(user.PhoneNumber),
@@ -262,7 +266,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting MFA status for user: {UserId}", User.GetUserId());
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 

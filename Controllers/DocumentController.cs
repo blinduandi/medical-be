@@ -7,14 +7,14 @@ using medical_be.DTOs;
 using medical_be.Services;
 using medical_be.Shared.Interfaces;
 using medical_be.Extensions;
+using medical_be.Controllers.Base;
 using AutoMapper;
 
 namespace medical_be.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class DocumentController : ControllerBase
+    public class DocumentController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
@@ -64,12 +64,12 @@ namespace medical_be.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(documents);
+                return SuccessResponse(documents);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting documents for patient: {PatientId}", patientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -84,21 +84,21 @@ namespace medical_be.Controllers
             {
                 if (uploadDto.File == null || uploadDto.File.Length == 0)
                 {
-                    return BadRequest("No file provided");
+                    return ErrorResponse("No file provided");
                 }
 
                 // Validate file size (10MB limit)
                 const long maxFileSize = 10 * 1024 * 1024;
                 if (uploadDto.File.Length > maxFileSize)
                 {
-                    return BadRequest("File size exceeds 10MB limit");
+                    return ErrorResponse("File size exceeds 10MB limit");
                 }
 
                 // Validate file type
                 var allowedTypes = new[] { "application/pdf", "image/jpeg", "image/png", "image/tiff", "application/dicom" };
                 if (!allowedTypes.Contains(uploadDto.File.ContentType))
                 {
-                    return BadRequest("Invalid file type. Only PDF, JPEG, PNG, TIFF, and DICOM files are allowed");
+                    return ErrorResponse("Invalid file type. Only PDF, JPEG, PNG, TIFF, and DICOM files are allowed");
                 }
 
                 // Create uploads directory if it doesn't exist
@@ -150,7 +150,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading document for patient: {PatientId}", uploadDto.PatientId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -168,14 +168,14 @@ namespace medical_be.Controllers
 
                 if (document == null)
                 {
-                    return NotFound("Document not found");
+                    return NotFoundResponse("Document not found");
                 }
 
                 var filePath = Path.Combine(_environment.ContentRootPath, "uploads", "medical-documents", document.StoredFileName);
 
                 if (!System.IO.File.Exists(filePath))
                 {
-                    return NotFound("File not found on server");
+                    return NotFoundResponse("File not found on server");
                 }
 
                 var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
@@ -195,7 +195,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error downloading document: {DocumentId}", documentId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -213,7 +213,7 @@ namespace medical_be.Controllers
 
                 if (document == null)
                 {
-                    return NotFound("Document not found");
+                    return NotFoundResponse("Document not found");
                 }
 
                 // Delete file from disk
@@ -242,7 +242,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting document: {DocumentId}", documentId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
 
@@ -260,7 +260,7 @@ namespace medical_be.Controllers
 
                 if (document == null)
                 {
-                    return NotFound("Document not found");
+                    return NotFoundResponse("Document not found");
                 }
 
                 document.Description = updateDto.Description;
@@ -283,7 +283,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating document: {DocumentId}", documentId);
-                return StatusCode(500, "Internal server error");
+                return InternalServerErrorResponse( "Internal server error");
             }
         }
     }
