@@ -37,6 +37,11 @@ public class User : IdentityUser
     public bool IsMFAEnabled { get; set; } = false;
     public string? MFASecret { get; set; }
 
+    // Email verification fields
+    public string? VerificationCode { get; set; }
+    public DateTime? VerificationCodeExpires { get; set; }
+    public bool IsEmailVerified { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public bool IsActive { get; set; } = true;

@@ -23,6 +23,10 @@ public interface IAuthService
     Task<medical_be.DTOs.UserDto?> UpdateUserAsync(string userId, medical_be.DTOs.UpdateUserDto dto);
     Task<bool> AssignRoleAsync(string userId, string roleName);
     Task<bool> RemoveRoleAsync(string userId, string roleName);
+    
+    // Email verification methods
+    Task<bool> GenerateVerificationCodeAsync(string email);
+    Task<medical_be.DTOs.VerificationResponseDto> VerifyCodeAsync(string email, string code);
 }
 
 public interface IMedicalService

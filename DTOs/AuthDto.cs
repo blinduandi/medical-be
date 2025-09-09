@@ -126,3 +126,27 @@ public class UpdateUserDto
     [MaxLength(500)]
     public string? Address { get; set; }
 }
+
+public class GetVerificationCodeDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+}
+
+public class VerifyCodeDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(6, MinimumLength = 6)]
+    public string Code { get; set; } = string.Empty;
+}
+
+public class VerificationResponseDto
+{
+    public bool IsValid { get; set; }
+    public string Message { get; set; } = string.Empty;
+}

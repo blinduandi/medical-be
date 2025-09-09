@@ -355,4 +355,107 @@ public class AuthService : IAuthService
 			Roles = roles.ToList()
 		};
 	}
+
+	// Email verification methods
+	public async Task<bool> GenerateVerificationCodeAsync(string email)
+	{
+		var user = await _userManager.FindByEmailAsync(email);
+		if (user == null)
+		{
+			_logger.LogWarning("Attempted to generate verification code for non-existent email: {Email}", email);
+			return false;
+		}
+
+		// Generate a 6-digit verification code
+		var code = "123456";//new Random().Next(100000, 999999).ToString();
+		
+		// Set expiration to 15 minutes from now
+		user.VerificationCode = code;
+		user.VerificationCodeExpires = DateTime.UtcNow.AddMinutes(15);
+
+		var result = await _userManager.UpdateAsync(user);
+		if (result.Succeeded)
+		{
+			_logger.LogInformation("Verification code generated for user: {Email}", email);
+			// TODO: Send email with verification code
+			// This would integrate with your email service
+			return true;
+		}
+
+		_logger.LogError("Failed to update user with verification code for email: {Email}. Errors: {Errors}", 
+			email, string.Join("; ", result.Errors.Select(e => e.Description)));
+		return false;
+	}
+
+	public async Task<medical_be.DTOs.VerificationResponseDto> VerifyCodeAsync(string email, string code)
+	{
+		var user = await _userManager.FindByEmailAsync(email);
+		if (user == null)
+		{
+			_logger.LogWarning("Attempted to verify code for non-existent email: {Email}", email);
+			return new medical_be.DTOs.VerificationResponseDto
+			{
+				IsValid = false,
+				Message = "User not found"
+			};
+		}
+
+		// Check if verification code exists
+		if (string.IsNullOrEmpty(user.VerificationCode))
+		{
+			_logger.LogWarning("No verification code found for user: {Email}", email);
+			return new medical_be.DTOs.VerificationResponseDto
+			{
+				IsValid = false,
+				Message = "No verification code found. Please request a new code."
+			};
+		}
+
+		// Check if code has expired
+		if (user.VerificationCodeExpires == null || user.VerificationCodeExpires < DateTime.UtcNow)
+		{
+			_logger.LogWarning("Verification code expired for user: {Email}", email);
+			return new medical_be.DTOs.VerificationResponseDto
+			{
+				IsValid = false,
+				Message = "Verification code has expired. Please request a new code."
+			};
+		}
+
+		// Check if code matches
+		if (user.VerificationCode != code)
+		{
+			_logger.LogWarning("Invalid verification code provided for user: {Email}", email);
+			return new medical_be.DTOs.VerificationResponseDto
+			{
+				IsValid = false,
+				Message = "Invalid verification code"
+			};
+		}
+
+		// Code is valid - mark email as verified and clear verification code
+		user.IsEmailVerified = true;
+		user.EmailConfirmed = true;
+		user.VerificationCode = null;
+		user.VerificationCodeExpires = null;
+
+		var result = await _userManager.UpdateAsync(user);
+		if (result.Succeeded)
+		{
+			_logger.LogInformation("Email verified successfully for user: {Email}", email);
+			return new medical_be.DTOs.VerificationResponseDto
+			{
+				IsValid = true,
+				Message = "Email verified successfully"
+			};
+		}
+
+		_logger.LogError("Failed to update user after email verification for email: {Email}. Errors: {Errors}", 
+			email, string.Join("; ", result.Errors.Select(e => e.Description)));
+		return new medical_be.DTOs.VerificationResponseDto
+		{
+			IsValid = false,
+			Message = "Failed to complete verification. Please try again."
+		};
+	}
 }

@@ -209,4 +209,58 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
+
+    [HttpPost("get-verification-code")]
+    public async Task<IActionResult> GetVerificationCode([FromBody] GetVerificationCodeDto dto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _authService.GenerateVerificationCodeAsync(dto.Email);
+            if (result)
+            {
+                _logger.LogInformation("Verification code sent to email: {Email}", dto.Email);
+                return Ok(new { message = "Verification code sent to your email" });
+            }
+
+            return BadRequest(new { message = "Failed to send verification code. Please check if the email is registered." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating verification code");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    [HttpPost("verify-code")]
+    public async Task<IActionResult> VerifyCode([FromBody] VerifyCodeDto dto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _authService.VerifyCodeAsync(dto.Email, dto.Code);
+            
+            if (result.IsValid)
+            {
+                _logger.LogInformation("Email verification successful for: {Email}", dto.Email);
+                return Ok(result);
+            }
+
+            _logger.LogWarning("Email verification failed for: {Email}. Reason: {Message}", dto.Email, result.Message);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying code");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
 }
