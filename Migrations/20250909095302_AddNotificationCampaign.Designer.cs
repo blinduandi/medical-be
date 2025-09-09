@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using medical_be.Data;
 
@@ -11,9 +12,11 @@ using medical_be.Data;
 namespace medical_be.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250909095302_AddNotificationCampaign")]
+    partial class AddNotificationCampaign
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -392,85 +395,6 @@ namespace medical_be.Migrations
                     b.ToTable("MedicalRecords");
                 });
 
-            modelBuilder.Entity("medical_be.Models.NotificationCampaign", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("DeliveryStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(max)")
-                        .HasDefaultValue("paused");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("FailedNotificationsCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("HardcodedFilters")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long?>("MainCompanyId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NotificationBody")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NotificationData")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NotificationTitle")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("OpenedNotificationsCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PendingNotificationsCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SelectedEntitiesCount")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("StartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("SuccessNotificationsCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TotalNotificationsCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(max)")
-                        .HasDefaultValue("email");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("notification_campaigns", (string)null);
-                });
-
             modelBuilder.Entity("medical_be.Models.NotificationLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -635,68 +559,6 @@ namespace medical_be.Migrations
                         .IsUnique();
 
                     b.ToTable("RolePermissions");
-                });
-
-            modelBuilder.Entity("medical_be.Models.SingleNotification", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Body")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long?>("CampaignId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("Data")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long?>("MainCompanyId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("ModelId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("ModelType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NanoId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(max)")
-                        .HasDefaultValue("waiting_for_sending");
-
-                    b.Property<string>("Title")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ToEmail")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CampaignId");
-
-                    b.ToTable("notifications", (string)null);
                 });
 
             modelBuilder.Entity("medical_be.Models.User", b =>
@@ -1113,16 +975,6 @@ namespace medical_be.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("medical_be.Models.SingleNotification", b =>
-                {
-                    b.HasOne("medical_be.Models.NotificationCampaign", "Campaign")
-                        .WithMany("Notifications")
-                        .HasForeignKey("CampaignId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Campaign");
-                });
-
             modelBuilder.Entity("medical_be.Models.UserRole", b =>
                 {
                     b.HasOne("medical_be.Models.Role", "Role")
@@ -1177,11 +1029,6 @@ namespace medical_be.Migrations
                     b.Navigation("Doctor");
 
                     b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("medical_be.Models.NotificationCampaign", b =>
-                {
-                    b.Navigation("Notifications");
                 });
 
             modelBuilder.Entity("medical_be.Models.Permission", b =>

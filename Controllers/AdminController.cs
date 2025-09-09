@@ -23,6 +23,7 @@ namespace medical_be.Controllers
         private readonly IMapper _mapper;
         private readonly IAuditService _auditService;
         private readonly ILogger<AdminController> _logger;
+        private readonly INotificationService _notificationService;
 
         public AdminController(
             ApplicationDbContext context,
@@ -30,7 +31,8 @@ namespace medical_be.Controllers
             RoleManager<Role> roleManager,
             IMapper mapper,
             IAuditService auditService,
-            ILogger<AdminController> logger)
+            ILogger<AdminController> logger,
+            INotificationService notificationService)
         {
             _context = context;
             _userManager = userManager;
@@ -38,6 +40,7 @@ namespace medical_be.Controllers
             _mapper = mapper;
             _auditService = auditService;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         /// <summary>
@@ -203,6 +206,9 @@ namespace medical_be.Controllers
 
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), "UserCreated", $"Created user: {createUserDto.Email}", "User", null, Request.GetClientIpAddress());
+                // Trigger welcome email asynchronously
+                _ = Task.Run(() => _notificationService.SendRegistrationWelcomeAsync(Guid.Parse(user.Id)));
+
 
                 var userDto = _mapper.Map<PatientProfileDto>(user);
                 return CreatedAtAction(nameof(GetUsers), userDto);

@@ -27,6 +27,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
     public DbSet<Vaccination> Vaccinations { get; set; }
     public DbSet<Allergy> Allergies { get; set; }
     public DbSet<MedicalDocument> MedicalDocuments { get; set; }
+    public DbSet<NotificationCampaign> NotificationCampaigns { get; set; }
+    public DbSet<SingleNotification> Notifications { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -223,5 +226,31 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
                 .HasForeignKey(d => d.VisitRecordId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
+
+
+        // Configure NotificationCampaign
+        builder.Entity<NotificationCampaign>(entity =>
+        {
+            entity.ToTable("notification_campaigns");
+            entity.Property(e => e.DeliveryStatus).HasDefaultValue("paused");
+            entity.Property(e => e.Type).HasDefaultValue("email");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // Configure Notification
+        builder.Entity<SingleNotification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.Property(e => e.Status).HasDefaultValue("waiting_for_sending");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(n => n.Campaign)
+                .WithMany(c => c.Notifications)
+                .HasForeignKey(n => n.CampaignId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
     }
 }
