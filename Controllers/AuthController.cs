@@ -31,6 +31,7 @@ public class AuthController : BaseApiController
                 return validationResult;
 
             var result = await _authService.RegisterAsync(registerDto);
+            
             if (result == null)
             {
                 return ErrorResponse("Registration failed. Email might already be in use.");

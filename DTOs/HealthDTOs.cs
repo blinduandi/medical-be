@@ -120,6 +120,16 @@ public class PatientSearchDto
     public DateTime? DateOfBirth { get; set; }
 }
 
+public class DoctorSearchDto
+{
+    public string? IDNP { get; set; }
+    public string? Name { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+    public string? ClinicId { get; set; }
+    public int TotalPatients { get; set; }
+    public DateTime? LastActivity { get; set; }
+}
+
 public class PatientSummaryDto
 {
     public Guid Id { get; set; }

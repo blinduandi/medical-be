@@ -166,11 +166,12 @@ public class AuthService : IAuthService
 		};
 
 		var result = await _userManager.CreateAsync(user, registerDto.Password);
-		if (!result.Succeeded) 
+		_logger.LogInformation($"Register result: {System.Text.Json.JsonSerializer.Serialize(result)} ");
+		if (!result.Succeeded)
 		{
-			_logger.LogWarning("User registration failed for {Email}. Errors: {Errors}", 
+			_logger.LogWarning("User registration failed for {Email}. Errors: {Errors}",
 				registerDto.Email, string.Join("; ", result.Errors.Select(e => e.Description)));
-			return null;
+			return string.Join("; ", result.Errors.Select(e => e.Description)));
 		}
 
 		// Assign role based on UserRole parameter
