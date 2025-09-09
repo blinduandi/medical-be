@@ -15,7 +15,7 @@ public interface IAuthService
     Task<List<medical_be.Shared.DTOs.UserDto>> GetUsersByRoleAsync(string role);
 
     // Extended methods used by controllers
-    Task<medical_be.DTOs.AuthResponseDto?> RegisterAsync(medical_be.DTOs.RegisterDto registerDto);
+    Task<medical_be.DTOs.RegistrationResultDto> RegisterAsync(medical_be.DTOs.RegisterDto registerDto);
     Task<medical_be.DTOs.AuthResponseDto?> LoginAsync(medical_be.DTOs.LoginDto loginDto);
     Task<medical_be.DTOs.AuthResponseDto?> VerifyMfaLoginAsync(string email, string otp);
     Task<bool> ChangePasswordAsync(string userId, medical_be.DTOs.ChangePasswordDto dto);

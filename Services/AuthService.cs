@@ -148,7 +148,7 @@ public class AuthService : IAuthService
 	}
 
 	// Newer methods used by current controllers
-	public async Task<medical_be.DTOs.AuthResponseDto?> RegisterAsync(medical_be.DTOs.RegisterDto registerDto)
+	public async Task<medical_be.DTOs.RegistrationResultDto> RegisterAsync(medical_be.DTOs.RegisterDto registerDto)
 	{
 		var user = new User
 		{
@@ -171,7 +171,13 @@ public class AuthService : IAuthService
 		{
 			_logger.LogWarning("User registration failed for {Email}. Errors: {Errors}",
 				registerDto.Email, string.Join("; ", result.Errors.Select(e => e.Description)));
-			return string.Join("; ", result.Errors.Select(e => e.Description)));
+			
+			return new medical_be.DTOs.RegistrationResultDto
+			{
+				Success = false,
+				Message = "Registration failed",
+				Errors = result.Errors.Select(e => e.Description).ToList()
+			};
 		}
 
 		// Assign role based on UserRole parameter
@@ -186,22 +192,27 @@ public class AuthService : IAuthService
 		var roles = await _userManager.GetRolesAsync(user);
 		var token = _jwtService.GenerateToken(user, roles);
 
-	return new medical_be.DTOs.AuthResponseDto
+		return new medical_be.DTOs.RegistrationResultDto
 		{
-			Token = token,
-			Expiration = DateTime.UtcNow.AddMinutes(60),
-			User = new medical_be.DTOs.UserDto
+			Success = true,
+			Message = "Registration successful",
+			AuthResponse = new medical_be.DTOs.AuthResponseDto
 			{
-				Id = user.Id,
-				Email = user.Email!,
-				FirstName = user.FirstName,
-				LastName = user.LastName,
-				PhoneNumber = user.PhoneNumber,
-				DateOfBirth = user.DateOfBirth,
-				Gender = user.Gender,
-				Address = user.Address,
-				IsActive = user.IsActive,
-				Roles = roles.ToList()
+				Token = token,
+				Expiration = DateTime.UtcNow.AddMinutes(60),
+				User = new medical_be.DTOs.UserDto
+				{
+					Id = user.Id,
+					Email = user.Email!,
+					FirstName = user.FirstName,
+					LastName = user.LastName,
+					PhoneNumber = user.PhoneNumber,
+					DateOfBirth = user.DateOfBirth,
+					Gender = user.Gender,
+					Address = user.Address,
+					IsActive = user.IsActive,
+					Roles = roles.ToList()
+				}
 			}
 		};
 	}
