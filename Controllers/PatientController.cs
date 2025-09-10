@@ -89,7 +89,7 @@ namespace medical_be.Controllers
         /// Get patient's visit records
         /// </summary>
         [HttpGet("{patientId}/visits")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Admin,Patient")]
         public async Task<IActionResult> GetVisitRecords(string patientId)
         {
             try
@@ -173,7 +173,7 @@ namespace medical_be.Controllers
         /// Get patient's vaccinations
         /// </summary>
         [HttpGet("{patientId}/vaccinations")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Admin,Patient")]
         public async Task<IActionResult> GetVaccinations(string patientId)
         {
             try
@@ -255,7 +255,7 @@ namespace medical_be.Controllers
         /// Get patient's allergies
         /// </summary>
         [HttpGet("{patientId}/allergies")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Admin,Patient")]
         public async Task<IActionResult> GetAllergies(string patientId)
         {
             try
@@ -330,6 +330,95 @@ namespace medical_be.Controllers
             {
                 _logger.LogError(ex, "Error adding allergy for patient: {PatientId}", patientId);
                 return InternalServerErrorResponse( "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Get patient's dashboard data (includes profile and other details)
+        /// </summary>
+        [HttpGet("dashboard")]
+        [Authorize(Roles = "Patient")]
+        public async Task<IActionResult> GetDashboard()
+        {
+            try
+            {
+                var patientId = User.GetUserId();
+
+                // Fetch profile data
+                var profile = await _context.Users
+                    .Where(u => u.Id == patientId)
+                    .Select(u => new PatientProfileDto
+                    {
+                        Id = u.Id,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email ?? string.Empty,
+                        PhoneNumber = u.PhoneNumber ?? string.Empty,
+                        IDNP = u.IDNP,
+                        BloodType = u.BloodType,
+                        DateOfBirth = u.DateOfBirth,
+                        Address = u.Address,
+                        IsActive = u.IsActive,
+                        ActiveAllergies = _context.Allergies
+                            .Where(a => a.PatientId == u.Id && a.IsActive)
+                            .Select(a => new AllergyDto
+                            {
+                                Id = a.Id,
+                                AllergenName = a.AllergenName,
+                                Severity = a.Severity.ToString(),
+                                Reaction = a.Reaction
+                            }).ToList(),
+                        RecentVaccinations = _context.Vaccinations
+                            .Where(v => v.PatientId == u.Id)
+                            .OrderByDescending(v => v.DateAdministered)
+                            .Take(5)
+                            .Select(v => new VaccinationDto
+                            {
+                                Id = v.Id,
+                                VaccineName = v.VaccineName,
+                                DateAdministered = v.DateAdministered,
+                                BatchNumber = v.BatchNumber
+                            }).ToList(),
+                        LastVisit = _context.VisitRecords
+                            .Where(v => v.PatientId == u.Id)
+                            .OrderByDescending(v => v.VisitDate)
+                            .Select(v => v.VisitDate)
+                            .FirstOrDefault(),
+                        TotalVisits = _context.VisitRecords
+                            .Count(v => v.PatientId == u.Id)
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (profile == null)
+                {
+                    return NotFoundResponse("Patient not found");
+                }
+
+                // Fetch visit records
+                var visits = await _context.VisitRecords
+                    .Where(v => v.PatientId == patientId)
+                    .OrderByDescending(v => v.VisitDate)
+                    .Select(v => new VisitRecordDto
+                    {
+                        Id = v.Id,
+                        VisitDate = v.VisitDate,
+                        Diagnosis = v.Diagnosis,
+                        Treatment = v.Treatment,
+                        Notes = v.Notes
+                    })
+                    .ToListAsync();
+
+                // Return aggregated data
+                return SuccessResponse(new
+                {
+                    Profile = profile,
+                    Visits = visits
+                }, "Dashboard data retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving dashboard data for patient: {PatientId}", User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving the dashboard data");
             }
         }
     }
