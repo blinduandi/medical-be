@@ -168,7 +168,6 @@ public class MedicalDocumentDto
 // Extended User DTOs
 public class PatientProfileDto : UserDto
 {
-    public string IDNP { get; set; } = string.Empty;
     public string? BloodType { get; set; }
     public List<AllergyDto> ActiveAllergies { get; set; } = new();
     public List<VaccinationDto> RecentVaccinations { get; set; } = new();
@@ -178,7 +177,6 @@ public class PatientProfileDto : UserDto
 
 public class DoctorProfileDto : UserDto
 {
-    public string IDNP { get; set; } = string.Empty;
     public string? ClinicId { get; set; }
     public int TotalPatients { get; set; }
     public DateTime? LastActivity { get; set; }
