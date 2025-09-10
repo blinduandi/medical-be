@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using medical_be.Models;
 using medical_be.Shared.Interfaces;
+using medical_be.Data;
 
 namespace medical_be.Services;
 
@@ -11,17 +12,20 @@ public class AuthService : IAuthService
 	private readonly SignInManager<User> _signInManager;
 	private readonly IJwtService _jwtService;
 	private readonly ILogger<AuthService> _logger;
+	private readonly ApplicationDbContext _context;
 
 	public AuthService(
 		UserManager<User> userManager,
 		SignInManager<User> signInManager,
 		IJwtService jwtService,
-		ILogger<AuthService> logger)
+		ILogger<AuthService> logger,
+		ApplicationDbContext context)
 	{
 		_userManager = userManager;
 		_signInManager = signInManager;
 		_jwtService = jwtService;
 		_logger = logger;
+		_context = context;
 	}
 
 	// Legacy/shared interface methods
@@ -179,6 +183,21 @@ public class AuthService : IAuthService
 				Errors = result.Errors.Select(e => e.Description).ToList()
 			};
 		}
+
+		// ---- CREATE DYNAMIC SINGLE NOTIFICATION ----
+    var notification = new SingleNotification
+    {
+        Title = "Welcome to MedTrack!",
+        Body = $"Hello {user.FirstName} {user.LastName}, your account was successfully created.",
+        ToEmail = user.Email,
+        Status = "waiting_for_sending",
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
+
+    _context.Notifications.Add(notification);
+    await _context.SaveChangesAsync();
+    // -------------------------------------------
 
 		// Assign role based on UserRole parameter
 		var roleName = registerDto.UserRole == medical_be.DTOs.UserRegistrationType.Doctor ? "Doctor" : "Patient";

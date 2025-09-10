@@ -6,6 +6,9 @@ using Serilog;
 using DotNetEnv;
 using medical_be.Shared.Interfaces;
 using medical_be.Services;
+using Quartz;
+using Quartz.Impl;
+using Quartz.Spi;
 
 // Load environment variables from .env file
 Env.Load();
@@ -32,6 +35,16 @@ builder.Services.AddValidators();
 builder.Services.AddSerilogLogging();
 builder.Services.AddCorsPolicy(builder.Configuration);
 builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// ---------------- Quartz Setup ----------------
+builder.Services.AddQuartz(q =>
+{
+    q.UseMicrosoftDependencyInjectionJobFactory();
+});
+
+// Hosted service for Quartz
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+
 
 // Add controllers
 builder.Services.AddControllers();

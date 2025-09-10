@@ -15,19 +15,7 @@ namespace medical_be.Models
         // Template
         public string? NotificationTitle { get; set; }
         public string? NotificationBody { get; set; }
-        public string? NotificationData { get; set; } // JSON as string
-
-        public string? HardcodedFilters { get; set; }
-
         public long? MainCompanyId { get; set; }
-
-        // Stats
-        public int SelectedEntitiesCount { get; set; } = 0;
-        public int TotalNotificationsCount { get; set; } = 0;
-        public int PendingNotificationsCount { get; set; } = 0;
-        public int FailedNotificationsCount { get; set; } = 0;
-        public int SuccessNotificationsCount { get; set; } = 0;
-        public int OpenedNotificationsCount { get; set; } = 0;
 
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

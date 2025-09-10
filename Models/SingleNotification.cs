@@ -6,17 +6,12 @@ namespace medical_be.Models
     public class SingleNotification
     {
         public long Id { get; set; }
-        public long? ModelId { get; set; }
-        public string? ModelType { get; set; }
-
         public string? Title { get; set; }
         public string? Body { get; set; }
         public string? Data { get; set; } // JSON
 
-        public string Status { get; set; } = "waiting_for_sending"; 
+        public string Status { get; set; } = "waiting_for_sending";
         // waiting_for_campaign_start, waiting_for_sending, failed, sent, opened
-
-        public string? NanoId { get; set; }
 
         // Campaign reference
         public long? CampaignId { get; set; }
@@ -30,5 +25,6 @@ namespace medical_be.Models
 
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public DateTime? ScheduledAt { get; set; }
     }
 }
