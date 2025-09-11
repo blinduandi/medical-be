@@ -379,11 +379,6 @@ namespace medical_be.Controllers
                                 DateAdministered = v.DateAdministered,
                                 BatchNumber = v.BatchNumber
                             }).ToList(),
-                        LastVisit = _context.VisitRecords
-                            .Where(v => v.PatientId == u.Id)
-                            .OrderByDescending(v => v.VisitDate)
-                            .Select(v => v.VisitDate)
-                            .FirstOrDefault(),
                         TotalVisits = _context.VisitRecords
                             .Count(v => v.PatientId == u.Id)
                     })
@@ -394,17 +389,20 @@ namespace medical_be.Controllers
                     return NotFoundResponse("Patient not found");
                 }
 
-                // Fetch visit records
+                // Fetch all visit records
                 var visits = await _context.VisitRecords
                     .Where(v => v.PatientId == patientId)
+                    .Include(v => v.Doctor)
                     .OrderByDescending(v => v.VisitDate)
                     .Select(v => new VisitRecordDto
                     {
                         Id = v.Id,
                         VisitDate = v.VisitDate,
+                        DoctorName = v.Doctor.FirstName + " " + v.Doctor.LastName,
                         Diagnosis = v.Diagnosis,
+                        Notes = v.Notes,
                         Treatment = v.Treatment,
-                        Notes = v.Notes
+                        Symptoms = v.Symptoms
                     })
                     .ToListAsync();
 
