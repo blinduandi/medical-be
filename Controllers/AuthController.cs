@@ -13,11 +13,13 @@ namespace medical_be.Controllers;
 public class AuthController : BaseApiController
 {
     private readonly IAuthService _authService;
+    private readonly IFileService _fileService;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    public AuthController(IAuthService authService, IFileService fileService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _fileService = fileService;
         _logger = logger;
     }
 
@@ -147,7 +149,36 @@ public class AuthController : BaseApiController
                 return NotFoundResponse("User not found");
             }
 
-            return SuccessResponse(user, "User information retrieved successfully");
+            // Get user's profile picture if exists
+            var profilePictureSearch = new FileSearchDto
+            {
+                ModelType = "User",
+                ModelId = userId,
+                Category = "ProfilePhoto",
+                PageSize = 1
+            };
+
+            var profilePictures = await _fileService.GetFilesAsync(profilePictureSearch);
+            var profilePicture = profilePictures.FirstOrDefault();
+
+            // Create response with profile picture
+            var userResponse = new
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                IDNP = user.IDNP,
+                PhoneNumber = user.PhoneNumber,
+                DateOfBirth = user.DateOfBirth,
+                Gender = user.Gender,
+                Address = user.Address,
+                IsActive = user.IsActive,
+                Roles = user.Roles,
+                ProfilePicture = profilePicture
+            };
+
+            return SuccessResponse(userResponse, "User information retrieved successfully");
         }
         catch (Exception ex)
         {
