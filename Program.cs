@@ -39,7 +39,14 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 // ---------------- Quartz Setup ----------------
 builder.Services.AddQuartz(q =>
 {
-    q.UseMicrosoftDependencyInjectionJobFactory();
+    var jobKey = new JobKey("NotificationJob");
+    q.AddJob<NotificationJob>(opts => opts.WithIdentity(jobKey));
+
+    q.AddTrigger(opts => opts
+        .ForJob(jobKey)
+        .WithIdentity("NotificationJob-trigger")
+        .StartNow()
+        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); 
 });
 
 // Hosted service for Quartz

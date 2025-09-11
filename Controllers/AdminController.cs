@@ -212,10 +212,7 @@ namespace medical_be.Controllers
 
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), "UserCreated", $"Created user: {createUserDto.Email}", "User", null, Request.GetClientIpAddress());
-                // Trigger welcome email asynchronously
-                _ = Task.Run(() => _notificationService.SendRegistrationWelcomeAsync(Guid.Parse(user.Id)));
-
-
+                
                 var userDto = _mapper.Map<PatientProfileDto>(user);
                 return SuccessResponse(userDto, "User created successfully");
             }

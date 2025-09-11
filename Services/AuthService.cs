@@ -188,7 +188,24 @@ public class AuthService : IAuthService
     var notification = new SingleNotification
     {
         Title = "Welcome to MedTrack!",
-        Body = $"Hello {user.FirstName} {user.LastName}, your account was successfully created.",
+        Body = $@"
+                    <h2>Welcome to Medical System!</h2>
+                    <p>Dear {user.FirstName} {user.LastName},</p>
+                    <p>Thank you for registering with our medical system. Your account has been created successfully.</p>
+                    <p><strong>Your Details:</strong></p>
+                    <ul>
+                        <li>Email: {user.Email}</li>
+                        <li>Registration Date: {user.CreatedAt:MMMM dd, yyyy}</li>
+                    </ul>
+                    <p>You can now:</p>
+                    <ul>
+                        <li>Schedule appointments with doctors</li>
+                        <li>View your medical records</li>
+                        <li>Manage your profile</li>
+                    </ul>
+                    <p>If you have any questions, please contact our support team.</p>
+                    <p>Best regards,<br>Medical System Team</p>
+                ",
         ToEmail = user.Email,
         Status = "waiting_for_sending",
         CreatedAt = DateTime.UtcNow,
