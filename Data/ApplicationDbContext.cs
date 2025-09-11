@@ -27,9 +27,16 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
     public DbSet<Vaccination> Vaccinations { get; set; }
     public DbSet<Allergy> Allergies { get; set; }
     public DbSet<MedicalDocument> MedicalDocuments { get; set; }
+<<<<<<< HEAD
     public DbSet<NotificationCampaign> NotificationCampaigns { get; set; }
     public DbSet<SingleNotification> Notifications { get; set; }
 
+=======
+    
+    // File Management
+    public DbSet<FileType> FileTypes { get; set; }
+    public DbSet<MedicalFile> MedicalFiles { get; set; }
+>>>>>>> 1b0e6081440198fc01f765133c073af52fc97015
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -227,6 +234,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+<<<<<<< HEAD
 
         // Configure NotificationCampaign
         builder.Entity<NotificationCampaign>(entity =>
@@ -252,5 +260,62 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+=======
+        // Configure FileType
+        builder.Entity<FileType>(entity =>
+        {
+            entity.HasKey(ft => ft.Id);
+            entity.Property(ft => ft.Name).IsRequired().HasMaxLength(100);
+            entity.Property(ft => ft.Description).HasMaxLength(500);
+            entity.Property(ft => ft.Category).IsRequired().HasMaxLength(100);
+            entity.Property(ft => ft.AllowedExtensions).IsRequired();
+            
+            entity.HasIndex(ft => ft.Category);
+            entity.HasIndex(ft => ft.IsActive);
+        });
+
+        // Configure MedicalFile
+        builder.Entity<MedicalFile>(entity =>
+        {
+            entity.HasKey(mf => mf.Id);
+            entity.Property(mf => mf.Name).IsRequired().HasMaxLength(255);
+            entity.Property(mf => mf.Path).IsRequired().HasMaxLength(500);
+            entity.Property(mf => mf.Extension).HasMaxLength(10);
+            entity.Property(mf => mf.MimeType).HasMaxLength(100);
+            entity.Property(mf => mf.ModelType).HasMaxLength(100);
+            entity.Property(mf => mf.Password).HasMaxLength(500);
+            entity.Property(mf => mf.Label).HasMaxLength(200);
+            entity.Property(mf => mf.BlurHash).HasMaxLength(100);
+            entity.Property(mf => mf.Metadata).HasMaxLength(1000);
+
+            // Configure relationships
+            entity.HasOne(mf => mf.Type)
+                .WithMany(ft => ft.Files)
+                .HasForeignKey(mf => mf.TypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(mf => mf.CreatedBy)
+                .WithMany()
+                .HasForeignKey(mf => mf.CreatedById)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(mf => mf.UpdatedBy)
+                .WithMany()
+                .HasForeignKey(mf => mf.UpdatedById)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(mf => mf.DeletedBy)
+                .WithMany()
+                .HasForeignKey(mf => mf.DeletedById)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Indexes for performance
+            entity.HasIndex(mf => mf.TypeId);
+            entity.HasIndex(mf => new { mf.ModelType, mf.ModelId });
+            entity.HasIndex(mf => mf.CreatedAt);
+            entity.HasIndex(mf => mf.DeletedAt);
+            entity.HasIndex(mf => mf.IsTemporary);
+        });
+>>>>>>> 1b0e6081440198fc01f765133c073af52fc97015
     }
 }

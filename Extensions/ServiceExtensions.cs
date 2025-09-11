@@ -109,6 +109,7 @@ public static class ServiceExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IConfigurationService, ConfigurationService>();
+        services.AddScoped<IFileService, FileService>();
 
         // Add Memory Cache for OTP storage
         services.AddMemoryCache();

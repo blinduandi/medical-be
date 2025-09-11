@@ -7,17 +7,18 @@ namespace medical_be.Helpers;
 public static class ApiResponse
 {
     /// <summary>
-    /// Returns a standardized 404 Not Found response
+    /// Returns a standardized 404 Not Found response with 200 status code
     /// </summary>
     public static IActionResult NotFound(string message = "Resource not found")
     {
         var result = new
         {
+            success = false,
             error = true,
             message = message
         };
 
-        return new ObjectResult(result) { StatusCode = 404 };
+        return new OkObjectResult(result);
     }
 
     /// <summary>
@@ -27,6 +28,7 @@ public static class ApiResponse
     {
         var result = new
         {
+            success = true,
             error = false,
             message = message,
             data = data
@@ -42,6 +44,7 @@ public static class ApiResponse
     {
         var result = new
         {
+            success = false,
             error = true,
             message = message,
             data = data
@@ -57,6 +60,7 @@ public static class ApiResponse
     {
         var result = new
         {
+            success = false,
             error = true,
             message = message,
             data = data
@@ -66,18 +70,19 @@ public static class ApiResponse
     }
 
     /// <summary>
-    /// Returns a standardized validation error response
+    /// Returns a standardized validation error response with 200 status code
     /// </summary>
     public static IActionResult ValidationError(string message = "Validation failed", object? validationErrors = null)
     {
         var result = new
         {
+            success = false,
             error = true,
             message = message,
             validationErrors = validationErrors
         };
 
-        return new BadRequestObjectResult(result);
+        return new OkObjectResult(result);
     }
 
     /// <summary>
@@ -87,6 +92,7 @@ public static class ApiResponse
     {
         var result = new
         {
+            success = false,
             error = true,
             message = message
         };
@@ -101,6 +107,7 @@ public static class ApiResponse
     {
         var result = new
         {
+            success = false,
             error = true,
             message = message
         };
@@ -115,6 +122,7 @@ public static class ApiResponse
     {
         var result = new
         {
+            success = false,
             error = true,
             message = message
         };
@@ -244,6 +252,7 @@ public static class ApiResponse
         
         var result = new
         {
+            success = true,
             error = false,
             message = message,
             data = data,

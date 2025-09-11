@@ -22,6 +22,7 @@ public static class DatabaseExtensions
             await SeedPermissionsAsync(context);
             await SeedDefaultUsersAsync(userManager);
             await AssignRolePermissionsAsync(context, roleManager);
+            await SeedFileTypesAsync(context);
         }
         catch (Exception ex)
         {
@@ -184,6 +185,91 @@ public static class DatabaseExtensions
         }
 
         context.RolePermissions.AddRange(rolePermissions);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedFileTypesAsync(ApplicationDbContext context)
+    {
+        if (await context.FileTypes.AnyAsync())
+            return;
+
+        var fileTypes = new[]
+        {
+            new FileType
+            {
+                Name = "Profile Photo",
+                Description = "User profile photos",
+                Category = "ProfilePhoto",
+                AllowedExtensions = "[\"jpg\",\"jpeg\",\"png\",\"webp\"]",
+                MaxSizeBytes = 5 * 1024 * 1024 // 5MB
+            },
+            new FileType
+            {
+                Name = "X-Ray",
+                Description = "X-Ray medical images",
+                Category = "XRay",
+                AllowedExtensions = "[\"jpg\",\"jpeg\",\"png\",\"pdf\",\"dcm\"]",
+                MaxSizeBytes = 50 * 1024 * 1024 // 50MB
+            },
+            new FileType
+            {
+                Name = "MRI Scan",
+                Description = "MRI medical images",
+                Category = "MRI",
+                AllowedExtensions = "[\"jpg\",\"jpeg\",\"png\",\"pdf\",\"dcm\"]",
+                MaxSizeBytes = 100 * 1024 * 1024 // 100MB
+            },
+            new FileType
+            {
+                Name = "CT Scan",
+                Description = "CT scan medical images",
+                Category = "CTScan",
+                AllowedExtensions = "[\"jpg\",\"jpeg\",\"png\",\"pdf\",\"dcm\"]",
+                MaxSizeBytes = 100 * 1024 * 1024 // 100MB
+            },
+            new FileType
+            {
+                Name = "Ultrasound",
+                Description = "Ultrasound medical images",
+                Category = "Ultrasound",
+                AllowedExtensions = "[\"jpg\",\"jpeg\",\"png\",\"pdf\"]",
+                MaxSizeBytes = 20 * 1024 * 1024 // 20MB
+            },
+            new FileType
+            {
+                Name = "Lab Result",
+                Description = "Laboratory test results",
+                Category = "LabResult",
+                AllowedExtensions = "[\"pdf\",\"jpg\",\"jpeg\",\"png\"]",
+                MaxSizeBytes = 10 * 1024 * 1024 // 10MB
+            },
+            new FileType
+            {
+                Name = "Prescription",
+                Description = "Medical prescriptions",
+                Category = "Prescription",
+                AllowedExtensions = "[\"pdf\",\"jpg\",\"jpeg\",\"png\"]",
+                MaxSizeBytes = 10 * 1024 * 1024 // 10MB
+            },
+            new FileType
+            {
+                Name = "Medical Document",
+                Description = "General medical documents",
+                Category = "Document",
+                AllowedExtensions = "[\"pdf\",\"doc\",\"docx\",\"jpg\",\"jpeg\",\"png\"]",
+                MaxSizeBytes = 25 * 1024 * 1024 // 25MB
+            },
+            new FileType
+            {
+                Name = "Medical Scan",
+                Description = "General medical scans and images",
+                Category = "MedicalScan",
+                AllowedExtensions = "[\"jpg\",\"jpeg\",\"png\",\"pdf\",\"dcm\"]",
+                MaxSizeBytes = 50 * 1024 * 1024 // 50MB
+            }
+        };
+
+        context.FileTypes.AddRange(fileTypes);
         await context.SaveChangesAsync();
     }
 }
