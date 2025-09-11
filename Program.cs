@@ -4,11 +4,21 @@ using medical_be.Middleware;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using DotNetEnv;
+using medical_be.Shared.Interfaces;
+using medical_be.Services;
+using Quartz;
+using Quartz.Impl;
+using Quartz.Spi;
 
 // Load environment variables from .env file
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+var emailApiKey = Environment.GetEnvironmentVariable("EMAIL_API_KEY");
+if (string.IsNullOrEmpty(emailApiKey))
+{
+    throw new InvalidOperationException("EMAIL_API_KEY is not set in environment variables.");
+}
 
 // Add Serilog
 builder.Host.UseSerilog();
@@ -24,6 +34,24 @@ builder.Services.AddApplicationServices();
 builder.Services.AddValidators();
 builder.Services.AddSerilogLogging();
 builder.Services.AddCorsPolicy(builder.Configuration);
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// ---------------- Quartz Setup ----------------
+builder.Services.AddQuartz(q =>
+{
+    var jobKey = new JobKey("NotificationJob");
+    q.AddJob<NotificationJob>(opts => opts.WithIdentity(jobKey));
+
+    q.AddTrigger(opts => opts
+        .ForJob(jobKey)
+        .WithIdentity("NotificationJob-trigger")
+        .StartNow()
+        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); 
+});
+
+// Hosted service for Quartz
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+
 
 // Add controllers
 builder.Services.AddControllers();
@@ -42,6 +70,12 @@ builder.Services.AddHttpsRedirection(options =>
 });
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+    await notificationService.TestBrevoEmailAsync();
+}
+
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

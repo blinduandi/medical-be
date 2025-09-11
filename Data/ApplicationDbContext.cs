@@ -27,10 +27,16 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
     public DbSet<Vaccination> Vaccinations { get; set; }
     public DbSet<Allergy> Allergies { get; set; }
     public DbSet<MedicalDocument> MedicalDocuments { get; set; }
+<<<<<<< HEAD
+    public DbSet<NotificationCampaign> NotificationCampaigns { get; set; }
+    public DbSet<SingleNotification> Notifications { get; set; }
+
+=======
     
     // File Management
     public DbSet<FileType> FileTypes { get; set; }
     public DbSet<MedicalFile> MedicalFiles { get; set; }
+>>>>>>> 1b0e6081440198fc01f765133c073af52fc97015
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -228,6 +234,33 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+<<<<<<< HEAD
+
+        // Configure NotificationCampaign
+        builder.Entity<NotificationCampaign>(entity =>
+        {
+            entity.ToTable("notification_campaigns");
+            entity.Property(e => e.DeliveryStatus).HasDefaultValue("paused");
+            entity.Property(e => e.Type).HasDefaultValue("email");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // Configure Notification
+        builder.Entity<SingleNotification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.Property(e => e.Status).HasDefaultValue("waiting_for_sending");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(n => n.Campaign)
+                .WithMany(c => c.Notifications)
+                .HasForeignKey(n => n.CampaignId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+=======
         // Configure FileType
         builder.Entity<FileType>(entity =>
         {
@@ -283,5 +316,6 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
             entity.HasIndex(mf => mf.DeletedAt);
             entity.HasIndex(mf => mf.IsTemporary);
         });
+>>>>>>> 1b0e6081440198fc01f765133c073af52fc97015
     }
 }

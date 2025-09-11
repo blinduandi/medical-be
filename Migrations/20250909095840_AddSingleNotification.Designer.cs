@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using medical_be.Data;
 
@@ -11,9 +12,11 @@ using medical_be.Data;
 namespace medical_be.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250909095840_AddSingleNotification")]
+    partial class AddSingleNotification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -261,53 +264,6 @@ namespace medical_be.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("medical_be.Models.FileType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AllowedExtensions")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<long>("MaxSizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Category");
-
-                    b.HasIndex("IsActive");
-
-                    b.ToTable("FileTypes");
-                });
-
             modelBuilder.Entity("medical_be.Models.MedicalDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -375,107 +331,6 @@ namespace medical_be.Migrations
                     b.HasIndex("VisitRecordId");
 
                     b.ToTable("MedicalDocuments");
-                });
-
-            modelBuilder.Entity("medical_be.Models.MedicalFile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BlurHash")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedById")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedById")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Extension")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<int?>("Height")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsTemporary")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Label")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Metadata")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("MimeType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ModelId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ModelType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("Password")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Path")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<long>("Size")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("TypeId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedById")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int?>("Width")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("DeletedAt");
-
-                    b.HasIndex("DeletedById");
-
-                    b.HasIndex("IsTemporary");
-
-                    b.HasIndex("TypeId");
-
-                    b.HasIndex("UpdatedById");
-
-                    b.HasIndex("ModelType", "ModelId");
-
-                    b.ToTable("MedicalFiles");
                 });
 
             modelBuilder.Entity("medical_be.Models.MedicalRecord", b =>
@@ -563,6 +418,12 @@ namespace medical_be.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("FailedNotificationsCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HardcodedFilters")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<long?>("MainCompanyId")
                         .HasColumnType("bigint");
 
@@ -573,11 +434,29 @@ namespace medical_be.Migrations
                     b.Property<string>("NotificationBody")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("NotificationData")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("NotificationTitle")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("OpenedNotificationsCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PendingNotificationsCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SelectedEntitiesCount")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("SuccessNotificationsCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalNotificationsCount")
+                        .HasColumnType("int");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -786,8 +665,14 @@ namespace medical_be.Migrations
                     b.Property<long?>("MainCompanyId")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime?>("ScheduledAt")
-                        .HasColumnType("datetime2");
+                    b.Property<long?>("ModelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ModelType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NanoId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1176,38 +1061,6 @@ namespace medical_be.Migrations
                     b.Navigation("VisitRecord");
                 });
 
-            modelBuilder.Entity("medical_be.Models.MedicalFile", b =>
-                {
-                    b.HasOne("medical_be.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("medical_be.Models.User", "DeletedBy")
-                        .WithMany()
-                        .HasForeignKey("DeletedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("medical_be.Models.FileType", "Type")
-                        .WithMany("Files")
-                        .HasForeignKey("TypeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("medical_be.Models.User", "UpdatedBy")
-                        .WithMany()
-                        .HasForeignKey("UpdatedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("DeletedBy");
-
-                    b.Navigation("Type");
-
-                    b.Navigation("UpdatedBy");
-                });
-
             modelBuilder.Entity("medical_be.Models.MedicalRecord", b =>
                 {
                     b.HasOne("medical_be.Models.Appointment", "Appointment")
@@ -1329,9 +1182,9 @@ namespace medical_be.Migrations
                     b.Navigation("Patient");
                 });
 
-            modelBuilder.Entity("medical_be.Models.FileType", b =>
+            modelBuilder.Entity("medical_be.Models.NotificationCampaign", b =>
                 {
-                    b.Navigation("Files");
+                    b.Navigation("Notifications");
                 });
 
             modelBuilder.Entity("medical_be.Models.Permission", b =>

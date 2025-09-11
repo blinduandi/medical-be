@@ -57,4 +57,6 @@ public interface INotificationService
     Task SendAppointmentReminderAsync(int appointmentId);
     Task SendRegistrationWelcomeAsync(Guid userId);
     Task SendPasswordResetAsync(string email, string resetToken);
+    Task TestBrevoEmailAsync();
+
 }
