@@ -35,6 +35,8 @@ builder.Services.AddValidators();
 builder.Services.AddSerilogLogging();
 builder.Services.AddCorsPolicy(builder.Configuration);
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<EmailTemplateService>();
+
 
 // Machine Learning & Analytics Services
 builder.Services.AddScoped<IPatternDetectionService, PatternDetectionService>();

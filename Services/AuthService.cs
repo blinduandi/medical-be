@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using medical_be.Models;
 using medical_be.Shared.Interfaces;
 using medical_be.Data;
+using medical_be.Services;
 
 namespace medical_be.Services;
 
@@ -13,19 +14,25 @@ public class AuthService : IAuthService
 	private readonly IJwtService _jwtService;
 	private readonly ILogger<AuthService> _logger;
 	private readonly ApplicationDbContext _context;
+	private readonly INotificationService _notificationService;
+	private readonly EmailTemplateService _emailTemplateService;
 
 	public AuthService(
 		UserManager<User> userManager,
 		SignInManager<User> signInManager,
 		IJwtService jwtService,
 		ILogger<AuthService> logger,
-		ApplicationDbContext context)
+		ApplicationDbContext context,
+		INotificationService notificationService,
+		EmailTemplateService emailTemplateService)
 	{
 		_userManager = userManager;
 		_signInManager = signInManager;
 		_jwtService = jwtService;
 		_logger = logger;
 		_context = context;
+		_notificationService = notificationService;
+		_emailTemplateService = emailTemplateService;
 	}
 
 	// Legacy/shared interface methods
@@ -423,17 +430,32 @@ public class AuthService : IAuthService
 		user.VerificationCodeExpires = DateTime.UtcNow.AddMinutes(15);
 
 		var result = await _userManager.UpdateAsync(user);
-		if (result.Succeeded)
-		{
-			_logger.LogInformation("Verification code generated for user: {Email}", email);
-			// TODO: Send email with verification code
-			// This would integrate with your email service
-			return true;
-		}
+		if (!result.Succeeded)
+			{
+				_logger.LogError("Failed to update user with verification code for email: {Email}. Errors: {Errors}", 
+					email, string.Join("; ", result.Errors.Select(e => e.Description)));
+				return false;
+			}
 
-		_logger.LogError("Failed to update user with verification code for email: {Email}. Errors: {Errors}", 
-			email, string.Join("; ", result.Errors.Select(e => e.Description)));
-		return false;
+			_logger.LogInformation("Verification code generated for user: {Email}", email);
+
+			// Prepare placeholders for template
+			var placeholders = new Dictionary<string, string>
+			{
+				{ "FirstName", user.FirstName },
+				{ "LastName", user.LastName },
+				{ "VerificationCode", code }
+			};
+
+			// Load the template
+			var body = await _emailTemplateService.GetTemplateAsync("VerificationEmail.html", placeholders);
+
+			var subject = "Your Verification Code";
+
+			// Send email
+			await _notificationService.SendEmailAsync(user.Email!, subject, body);
+
+			return true;
 	}
 
 	public async Task<medical_be.DTOs.VerificationResponseDto> VerifyCodeAsync(string email, string code)
