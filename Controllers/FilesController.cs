@@ -24,6 +24,7 @@ public class FilesController : BaseApiController
     /// Upload a new file
     /// </summary>
     [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadFile([FromForm] FileUploadDto dto)
     {
         try
@@ -370,7 +371,8 @@ public class FilesController : BaseApiController
     /// Upload/Update current user's profile picture
     /// </summary>
     [HttpPost("profile-picture")]
-    public async Task<IActionResult> UploadProfilePicture([FromForm] IFormFile file)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadProfilePicture([FromForm] ProfilePhotoUploadDto dto)
     {
         try
         {
@@ -378,7 +380,7 @@ public class FilesController : BaseApiController
             if (string.IsNullOrEmpty(userId))
                 return UnauthorizedResponse("User not authenticated");
 
-            if (file == null)
+            if (dto?.File == null)
                 return ValidationErrorResponse("No file provided");
 
             // Get the Profile Photo file type (assuming it's ID 1 from seeding)
@@ -404,7 +406,7 @@ public class FilesController : BaseApiController
             // Upload new profile picture
             var uploadDto = new FileUploadDto
             {
-                File = file,
+                File = dto.File,
                 TypeId = profilePhotoType.Id,
                 ModelType = "User",
                 ModelId = userId,

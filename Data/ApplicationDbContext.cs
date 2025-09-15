@@ -27,16 +27,21 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
     public DbSet<Vaccination> Vaccinations { get; set; }
     public DbSet<Allergy> Allergies { get; set; }
     public DbSet<MedicalDocument> MedicalDocuments { get; set; }
-<<<<<<< HEAD
+    
+    // Notifications
     public DbSet<NotificationCampaign> NotificationCampaigns { get; set; }
     public DbSet<SingleNotification> Notifications { get; set; }
-
-=======
     
     // File Management
     public DbSet<FileType> FileTypes { get; set; }
     public DbSet<MedicalFile> MedicalFiles { get; set; }
->>>>>>> 1b0e6081440198fc01f765133c073af52fc97015
+    
+    // Machine Learning & Analytics
+    public DbSet<MedicalPattern> MedicalPatterns { get; set; }
+    public DbSet<PatternMatch> PatternMatches { get; set; }
+    public DbSet<MedicalAlert> MedicalAlerts { get; set; }
+    public DbSet<LabResult> LabResults { get; set; }
+    public DbSet<Diagnosis> Diagnoses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -234,8 +239,6 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-<<<<<<< HEAD
-
         // Configure NotificationCampaign
         builder.Entity<NotificationCampaign>(entity =>
         {
@@ -260,7 +263,6 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-=======
         // Configure FileType
         builder.Entity<FileType>(entity =>
         {
@@ -316,6 +318,127 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
             entity.HasIndex(mf => mf.DeletedAt);
             entity.HasIndex(mf => mf.IsTemporary);
         });
->>>>>>> 1b0e6081440198fc01f765133c073af52fc97015
+
+        // Configure MedicalPattern
+        builder.Entity<MedicalPattern>(entity =>
+        {
+            entity.HasKey(mp => mp.Id);
+            entity.Property(mp => mp.Name).IsRequired().HasMaxLength(200);
+            entity.Property(mp => mp.Description).HasMaxLength(1000);
+            entity.Property(mp => mp.TriggerCondition).IsRequired();
+            entity.Property(mp => mp.OutcomeCondition).IsRequired();
+
+            entity.HasOne(mp => mp.Creator)
+                .WithMany()
+                .HasForeignKey(mp => mp.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(mp => mp.Updater)
+                .WithMany()
+                .HasForeignKey(mp => mp.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(mp => mp.IsActive);
+            entity.HasIndex(mp => mp.CreatedAt);
+        });
+
+        // Configure PatternMatch
+        builder.Entity<PatternMatch>(entity =>
+        {
+            entity.HasKey(pm => pm.Id);
+            entity.Property(pm => pm.MatchingData).IsRequired();
+
+            entity.HasOne(pm => pm.Pattern)
+                .WithMany(p => p.Matches)
+                .HasForeignKey(pm => pm.PatternId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pm => pm.Patient)
+                .WithMany(u => u.PatternMatches)
+                .HasForeignKey(pm => pm.PatientId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(pm => pm.DetectedAt);
+            entity.HasIndex(pm => pm.ConfidenceScore);
+            entity.HasIndex(pm => pm.IsNotified);
+        });
+
+        // Configure MedicalAlert
+        builder.Entity<MedicalAlert>(entity =>
+        {
+            entity.HasKey(ma => ma.Id);
+            entity.Property(ma => ma.AlertType).IsRequired().HasMaxLength(100);
+            entity.Property(ma => ma.Severity).IsRequired().HasMaxLength(50);
+            entity.Property(ma => ma.Message).IsRequired();
+
+            entity.HasOne(ma => ma.Patient)
+                .WithMany(u => u.PatientAlerts)
+                .HasForeignKey(ma => ma.PatientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ma => ma.PatternMatch)
+                .WithMany(pm => pm.Alerts)
+                .HasForeignKey(ma => ma.PatternMatchId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(ma => ma.Reader)
+                .WithMany(u => u.ReadAlerts)
+                .HasForeignKey(ma => ma.ReadBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(ma => ma.CreatedAt);
+            entity.HasIndex(ma => ma.Severity);
+            entity.HasIndex(ma => ma.AlertType);
+            entity.HasIndex(ma => ma.IsRead);
+        });
+
+        // Configure LabResult
+        builder.Entity<LabResult>(entity =>
+        {
+            entity.HasKey(lr => lr.Id);
+            entity.Property(lr => lr.TestName).IsRequired().HasMaxLength(100);
+            entity.Property(lr => lr.TestCode).HasMaxLength(20);
+            entity.Property(lr => lr.Unit).IsRequired().HasMaxLength(20);
+            entity.Property(lr => lr.Status).IsRequired().HasMaxLength(20);
+            entity.Property(lr => lr.LabName).HasMaxLength(200);
+            entity.Property(lr => lr.Notes).HasMaxLength(500);
+
+            entity.HasOne(lr => lr.Patient)
+                .WithMany(u => u.LabResults)
+                .HasForeignKey(lr => lr.PatientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(lr => lr.TestDate);
+            entity.HasIndex(lr => lr.TestName);
+            entity.HasIndex(lr => lr.Status);
+            entity.HasIndex(lr => lr.CreatedAt);
+        });
+
+        // Configure Diagnosis
+        builder.Entity<Diagnosis>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.DiagnosisCode).IsRequired().HasMaxLength(20);
+            entity.Property(d => d.DiagnosisName).IsRequired().HasMaxLength(200);
+            entity.Property(d => d.Description).HasMaxLength(500);
+            entity.Property(d => d.Severity).HasMaxLength(50);
+            entity.Property(d => d.Category).HasMaxLength(100);
+            entity.Property(d => d.Notes).HasMaxLength(500);
+
+            entity.HasOne(d => d.Patient)
+                .WithMany(u => u.PatientDiagnoses)
+                .HasForeignKey(d => d.PatientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.Doctor)
+                .WithMany(u => u.DoctorDiagnoses)
+                .HasForeignKey(d => d.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(d => d.DiagnosedDate);
+            entity.HasIndex(d => d.Category);
+            entity.HasIndex(d => d.IsActive);
+            entity.HasIndex(d => d.CreatedAt);
+        });
     }
 }

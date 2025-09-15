@@ -21,6 +21,12 @@ public class FileUploadDto
     public bool IsTemporary { get; set; } = false;
 }
 
+public class ProfilePhotoUploadDto
+{
+    [Required]
+    public IFormFile File { get; set; } = null!;
+}
+
 public class FileResponseDto
 {
     public Guid Id { get; set; }

@@ -140,6 +140,13 @@ public static class ServiceExtensions
                 }
             });
 
+            // Enable support for file upload in Swagger (multipart/form-data)
+            c.MapType<IFormFile>(() => new OpenApiSchema
+            {
+                Type = "string",
+                Format = "binary"
+            });
+
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below. Example: 'Bearer 12345abcdef'",

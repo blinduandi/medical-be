@@ -57,6 +57,20 @@ public class User : IdentityUser
     public virtual ICollection<Vaccination> AdministeredVaccinations { get; set; } = new List<Vaccination>();
     public virtual ICollection<Allergy> PatientAllergies { get; set; } = new List<Allergy>();
     public virtual ICollection<Allergy> RecordedAllergies { get; set; } = new List<Allergy>();
+    
+    // ML and Analytics Navigation Properties
+    public virtual ICollection<LabResult> LabResults { get; set; } = new List<LabResult>();
+    public virtual ICollection<Diagnosis> PatientDiagnoses { get; set; } = new List<Diagnosis>();
+    public virtual ICollection<Diagnosis> DoctorDiagnoses { get; set; } = new List<Diagnosis>();
+    public virtual ICollection<PatternMatch> PatternMatches { get; set; } = new List<PatternMatch>();
+    public virtual ICollection<MedicalAlert> PatientAlerts { get; set; } = new List<MedicalAlert>();
+    public virtual ICollection<MedicalAlert> ReadAlerts { get; set; } = new List<MedicalAlert>();
+
+    // Convenience Properties for Analytics
+    public virtual ICollection<VisitRecord> PatientVisits => PatientVisitRecords;
+    public virtual ICollection<Allergy> Allergies => PatientAllergies;
+    public virtual ICollection<Vaccination> Vaccinations => PatientVaccinations;
+    public virtual ICollection<Diagnosis> Diagnoses => PatientDiagnoses;
 }
 
 public enum Gender

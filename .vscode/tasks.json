@@ -1,0 +1,22 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run ASP.NET API",
+			"type": "shell",
+			"command": "dotnet run",
+			"isBackground": true,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run ASP.NET API",
+			"type": "shell",
+			"command": "dotnet run",
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}
