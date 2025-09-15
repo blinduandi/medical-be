@@ -19,7 +19,7 @@ namespace medical_be.DTOs
     {
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
-        public string ClinicId { get; set; }
+        public string? ClinicId { get; set; }
         public bool? IsActive { get; set; }
     }
 }

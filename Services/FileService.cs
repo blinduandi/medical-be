@@ -416,13 +416,16 @@ public class FileService : IFileService
 
     private async Task<FileResponseDto> MapToResponseDto(MedicalFile file)
     {
+        var downloadUrl = await GenerateDownloadUrlAsync(file.Id);
+        var thumbnailUrl = file.IsImage ? await GenerateThumbnailAsync(file.Id) : null;
+
         return new FileResponseDto
         {
             Id = file.Id,
             Name = file.Name,
             DisplayName = file.DisplayName,
             Size = file.Size,
-            SizeFormatted = file.SizeFormatted,
+            SizeFormatted = FormatBytes(file.Size),
             Extension = file.Extension,
             MimeType = file.MimeType,
             Label = file.Label,
@@ -434,8 +437,8 @@ public class FileService : IFileService
             CreatedAt = file.CreatedAt,
             CreatedByName = file.CreatedBy != null ? $"{file.CreatedBy.FirstName} {file.CreatedBy.LastName}" : null,
             Type = MapToFileTypeDto(file.Type),
-            DownloadUrl = await GenerateDownloadUrlAsync(file.Id),
-            ThumbnailUrl = file.IsImage ? await GenerateThumbnailAsync(file.Id) : null
+            DownloadUrl = downloadUrl,
+            ThumbnailUrl = thumbnailUrl
         };
     }
 

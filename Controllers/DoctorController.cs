@@ -203,7 +203,7 @@ namespace medical_be.Controllers
                 Id = doctor.Id,
                 FirstName = doctor.FirstName,
                 LastName = doctor.LastName,
-                Email = doctor.Email,
+                Email = doctor.Email ?? string.Empty,
                 PhoneNumber = doctor.PhoneNumber,
                 IDNP = doctor.IDNP,
                 ClinicId = doctor.ClinicId,

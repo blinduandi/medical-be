@@ -106,7 +106,7 @@ public class DataSeedingService : IDataSeedingService
             // Determine offset to avoid duplicate user emails on repeated seeding runs
             var existingGeneratedUsers = await _context.Users
                 .AsNoTracking()
-                .CountAsync(u => u.Email.StartsWith("user") && u.Email.EndsWith("@medical.com"));
+                .CountAsync(u => (u.Email ?? string.Empty).StartsWith("user") && (u.Email ?? string.Empty).EndsWith("@medical.com"));
 
             // Start with creating users in batches
             const int batchSize = 500;

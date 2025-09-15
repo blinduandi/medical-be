@@ -41,10 +41,12 @@ namespace medical_be.Services
             _brevoApi = new TransactionalEmailsApi(config);
         }
 
-        public async System.Threading.Tasks.Task TestBrevoEmailAsync()
-        {
-          //  await SendEmailAsync("janetagrigoras@gmail.com", "Test Email", "<p>This is a test from Brevo.</p>");
-        }
+                public async System.Threading.Tasks.Task TestBrevoEmailAsync()
+                {
+                        await System.Threading.Tasks.Task.Yield();
+                        // Intentionally no-op in development unless explicitly invoked.
+                        // Example: await SendEmailAsync("example@example.com", "Test Email", "<p>This is a test.</p>");
+                }
 
 
         public async System.Threading.Tasks.Task SendEmailAsync(string to, string subject, string body)
