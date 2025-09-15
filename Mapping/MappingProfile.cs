@@ -28,5 +28,10 @@ public class MappingProfile : Profile
         // Allergy -> AllergyDto
         CreateMap<Allergy, AllergyDto>()
             .ForMember(d => d.Severity, opt => opt.MapFrom(s => s.Severity.ToString()));
+
+        // Appointment -> AppointmentDto
+        CreateMap<Appointment, AppointmentDto>()
+            .ForMember(d => d.PatientName, opt => opt.Ignore())
+            .ForMember(d => d.DoctorName, opt => opt.Ignore());
     }
 }

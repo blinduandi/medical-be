@@ -26,7 +26,10 @@ public class NotificationJob : IJob
         {
             try
             {
-                await _notificationService.SendEmailAsync(notif.ToEmail, notif.Title, notif.Body);
+                var to = notif.ToEmail ?? string.Empty;
+                var subj = notif.Title ?? string.Empty;
+                var body = notif.Body ?? string.Empty;
+                await _notificationService.SendEmailAsync(to, subj, body);
 
                 notif.Status = "sent";
                 notif.UpdatedAt = DateTime.UtcNow;

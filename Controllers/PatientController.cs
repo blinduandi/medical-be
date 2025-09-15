@@ -138,6 +138,7 @@ namespace medical_be.Controllers
                     PatientId = patientId,
                     DoctorId = doctorId,
                     VisitDate = visitDto.VisitDate,
+                    Symptoms = visitDto.Symptoms, 
                     Diagnosis = visitDto.Diagnosis,
                     Treatment = visitDto.Treatment,
                     Notes = visitDto.Notes ?? string.Empty,
@@ -223,6 +224,7 @@ namespace medical_be.Controllers
                     DateAdministered = vaccinationDto.DateAdministered,
                     AdministeredById = doctorId,
                     BatchNumber = vaccinationDto.BatchNumber,
+                    Manufacturer = vaccinationDto.Manufacturer,
                     Notes = vaccinationDto.Notes,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -375,9 +377,15 @@ namespace medical_be.Controllers
                             .Select(v => new VaccinationDto
                             {
                                 Id = v.Id,
+                                PatientId = v.PatientId,
                                 VaccineName = v.VaccineName,
                                 DateAdministered = v.DateAdministered,
-                                BatchNumber = v.BatchNumber
+                                BatchNumber = v.BatchNumber,
+                                Manufacturer = v.Manufacturer,
+                                Notes = v.Notes,
+                                AdministeredById = v.AdministeredById,
+                                DoctorName = v.AdministeredBy != null ? (v.AdministeredBy.FirstName + " " + v.AdministeredBy.LastName) : null,
+                                CreatedAt = v.CreatedAt
                             }).ToList(),
                         TotalVisits = _context.VisitRecords
                             .Count(v => v.PatientId == u.Id)

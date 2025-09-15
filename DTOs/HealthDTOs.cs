@@ -25,6 +25,7 @@ public class VisitRecordDto
 public class CreateVisitRecordDto
 {
     public DateTime VisitDate { get; set; }
+    public string Symptoms { get; set; } = string.Empty; // Add this field
     public string Diagnosis { get; set; } = string.Empty;
     public string Treatment { get; set; } = string.Empty;
     public string? Notes { get; set; }
