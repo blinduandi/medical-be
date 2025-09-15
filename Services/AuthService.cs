@@ -75,7 +75,7 @@ public class AuthService : IAuthService
 			DateOfBirth = createUserDto.DateOfBirth,
 			Gender = Enum.TryParse<Gender>(createUserDto.Gender, out var g) ? g : Gender.Other,
 			Address = createUserDto.Address,
-			EmailConfirmed = true,
+			EmailConfirmed = false,
 			IsActive = true
 		};
 
@@ -191,37 +191,37 @@ public class AuthService : IAuthService
 			};
 		}
 
-		// ---- CREATE DYNAMIC SINGLE NOTIFICATION ----
-    var notification = new SingleNotification
-    {
-        Title = "Welcome to MedTrack!",
-        Body = $@"
-                    <h2>Welcome to Medical System!</h2>
-                    <p>Dear {user.FirstName} {user.LastName},</p>
-                    <p>Thank you for registering with our medical system. Your account has been created successfully.</p>
-                    <p><strong>Your Details:</strong></p>
-                    <ul>
-                        <li>Email: {user.Email}</li>
-                        <li>Registration Date: {user.CreatedAt:MMMM dd, yyyy}</li>
-                    </ul>
-                    <p>You can now:</p>
-                    <ul>
-                        <li>Schedule appointments with doctors</li>
-                        <li>View your medical records</li>
-                        <li>Manage your profile</li>
-                    </ul>
-                    <p>If you have any questions, please contact our support team.</p>
-                    <p>Best regards,<br>Medical System Team</p>
-                ",
-        ToEmail = user.Email,
-        Status = "waiting_for_sending",
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow
-    };
+	// 	// ---- CREATE DYNAMIC SINGLE NOTIFICATION ----
+    // var notification = new SingleNotification
+    // {
+    //     Title = "Welcome to MedTrack!",
+    //     Body = $@"
+    //                 <h2>Welcome to Medical System!</h2>
+    //                 <p>Dear {user.FirstName} {user.LastName},</p>
+    //                 <p>Thank you for registering with our medical system. Your account has been created successfully.</p>
+    //                 <p><strong>Your Details:</strong></p>
+    //                 <ul>
+    //                     <li>Email: {user.Email}</li>
+    //                     <li>Registration Date: {user.CreatedAt:MMMM dd, yyyy}</li>
+    //                 </ul>
+    //                 <p>You can now:</p>
+    //                 <ul>
+    //                     <li>Schedule appointments with doctors</li>
+    //                     <li>View your medical records</li>
+    //                     <li>Manage your profile</li>
+    //                 </ul>
+    //                 <p>If you have any questions, please contact our support team.</p>
+    //                 <p>Best regards,<br>Medical System Team</p>
+    //             ",
+    //     ToEmail = user.Email,
+    //     Status = "waiting_for_sending",
+    //     CreatedAt = DateTime.UtcNow,
+    //     UpdatedAt = DateTime.UtcNow
+    // };
 
-    _context.Notifications.Add(notification);
-    await _context.SaveChangesAsync();
-    // -------------------------------------------
+    // _context.Notifications.Add(notification);
+    // await _context.SaveChangesAsync();
+    // // -------------------------------------------
 
 		// Assign role based on UserRole parameter
 		var roleName = registerDto.UserRole == medical_be.DTOs.UserRegistrationType.Doctor ? "Doctor" : "Patient";
@@ -511,22 +511,20 @@ public class AuthService : IAuthService
 		user.VerificationCodeExpires = null;
 
 		var result = await _userManager.UpdateAsync(user);
-		if (result.Succeeded)
+		var placeholders = new Dictionary<string, string>
 		{
-			_logger.LogInformation("Email verified successfully for user: {Email}", email);
-			return new medical_be.DTOs.VerificationResponseDto
-			{
-				IsValid = true,
-				Message = "Email verified successfully"
-			};
-		}
+			{ "FirstName", user.FirstName },
+			{ "LastName", user.LastName }
+		};
 
-		_logger.LogError("Failed to update user after email verification for email: {Email}. Errors: {Errors}", 
-			email, string.Join("; ", result.Errors.Select(e => e.Description)));
+		var body = await _emailTemplateService.GetTemplateAsync("WelcomeEmail.html", placeholders);
+		await _notificationService.SendEmailAsync(user.Email!, "Welcome to Medical System!", body);
+
 		return new medical_be.DTOs.VerificationResponseDto
 		{
-			IsValid = false,
-			Message = "Failed to complete verification. Please try again."
+			IsValid = true,
+			Message = "Email verified successfully"
 		};
+
 	}
 }

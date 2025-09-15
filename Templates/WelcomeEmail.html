@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to MedTrack</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f4f6f8;
+            color: black;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            padding: 40px 50px;
+            border-radius: 15px;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+            line-height: 1.7;
+        }
+        h2 {
+            color: #0073b1;
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+        p {
+            font-size: 16px;
+            margin: 15px 0;
+        }
+        ul {
+            margin: 15px 0 25px 25px;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .footer { 
+            margin-top: 30px; 
+            font-size: 14px; 
+            color: #6c757d; 
+            border-top: 1px solid #dee2e6; 
+            padding-top: 15px;
+        }
+        .footer a {
+            color: #0073b1; 
+            text-decoration: none;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 30px 0;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome to MedTrack!</h2>
+        <p>Dear {{FirstName}} {{LastName}},</p>
+        <p>We are delighted to have you on board. Your email has been successfully verified, and your account is now fully active.</p>
+
+        <hr class="divider">
+
+        <p>With your account, you can now:</p>
+        <ul>
+            <li>Schedule appointments with your doctors quickly and easily</li>
+            <li>Access and manage your medical records securely</li>
+            <li>Update your personal information and profile settings</li>
+            <li>Receive timely notifications and reminders for your healthcare needs</li>
+        </ul>
+
+        <p>If you have any questions or require assistance, our support team is ready to help you. Simply reach out to us at <strong>support@medicalsystem.com</strong>.</p>
+        <div class="footer">
+            &copy; {{CurrentYear}} MedTrack. All rights reserved.<br>
+            <a href="mailto:support@medtrack.com">Contact Support</a>
+    </div>
+</body>
+</html>
