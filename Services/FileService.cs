@@ -107,7 +107,7 @@ public class FileService : IFileService
         var file = await _context.MedicalFiles
             .Include(f => f.Type)
             .Include(f => f.CreatedBy)
-            .FirstOrDefaultAsync(f => f.Id == id && !f.IsDeleted);
+            .FirstOrDefaultAsync(f => f.Id == id && f.DeletedAt == null);
 
         return file != null ? await MapToResponseDto(file) : null;
     }
@@ -153,7 +153,7 @@ public class FileService : IFileService
     public async Task<Stream?> GetFileStreamAsync(Guid id)
     {
         var file = await _context.MedicalFiles.FindAsync(id);
-        if (file == null || file.IsDeleted)
+        if (file == null || file.DeletedAt != null)
             return null;
 
         var fullPath = Path.Combine(_uploadPath, file.Path);
@@ -184,7 +184,7 @@ public class FileService : IFileService
     public async Task<int> BulkDeleteFilesAsync(Guid[] fileIds, string userId)
     {
         var files = await _context.MedicalFiles
-            .Where(f => fileIds.Contains(f.Id) && !f.IsDeleted)
+            .Where(f => fileIds.Contains(f.Id) && f.DeletedAt == null)
             .ToListAsync();
 
         var deleteTime = DateTime.UtcNow;
@@ -388,7 +388,7 @@ public class FileService : IFileService
         var query = _context.MedicalFiles
             .Include(f => f.Type)
             .Include(f => f.CreatedBy)
-            .Where(f => !f.IsDeleted);
+            .Where(f => f.DeletedAt == null);
 
         if (!string.IsNullOrEmpty(searchDto.ModelType))
             query = query.Where(f => f.ModelType == searchDto.ModelType);
