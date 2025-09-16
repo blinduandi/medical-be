@@ -9,6 +9,7 @@ using medical_be.Shared.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using medical_be.Services;
 
 namespace medical_be.Controllers;
 
@@ -20,17 +21,23 @@ public class AppointmentController : BaseApiController
     private readonly IMapper _mapper;
     private readonly IAuditService _auditService;
     private readonly ILogger<AppointmentController> _logger;
+    private readonly INotificationService _notificationService;
+    private readonly EmailTemplateService _emailTemplateService;
 
     public AppointmentController(
         ApplicationDbContext context,
         IMapper mapper,
         IAuditService auditService,
-        ILogger<AppointmentController> logger)
+        ILogger<AppointmentController> logger,
+        INotificationService notificationService,
+        EmailTemplateService emailTemplateService)
     {
         _context = context;
         _mapper = mapper;
         _auditService = auditService;
         _logger = logger;
+        _notificationService = notificationService;
+        _emailTemplateService = emailTemplateService;
     }
 
     /// <summary>
@@ -139,7 +146,7 @@ public class AppointmentController : BaseApiController
     /// Create a new appointment
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Doctor,Admin")]
+    [Authorize(Roles = "Doctor,Admin,Patient")]
     public async Task<IActionResult> Create([FromBody] CreateAppointmentDto dto)
     {
         try
@@ -155,12 +162,18 @@ public class AppointmentController : BaseApiController
             // Prevent overlapping for doctor
             var start = dto.AppointmentDate;
             var end = dto.AppointmentDate + (dto.Duration == default ? TimeSpan.FromMinutes(30) : dto.Duration);
-            var overlaps = await _context.Appointments.AnyAsync(a =>
-                a.DoctorId == dto.DoctorId &&
-                a.Status != AppointmentStatus.Cancelled &&
-                a.Status != AppointmentStatus.Completed &&
+            // Get relevant appointments from database
+            var doctorAppointments = await _context.Appointments
+                .Where(a => a.DoctorId == dto.DoctorId &&
+                            a.Status != AppointmentStatus.Cancelled &&
+                            a.Status != AppointmentStatus.Completed)
+                .ToListAsync(); // <-- bring them to memory
+
+            // Check for overlap in memory using TimeSpan
+            var overlaps = doctorAppointments.Any(a =>
                 a.AppointmentDate < end &&
-                (a.AppointmentDate + a.Duration) > start);
+                a.AppointmentDate + a.Duration > start
+            );
             if (overlaps)
                 return ValidationErrorResponse("The doctor already has an appointment in this time range");
 
@@ -179,6 +192,29 @@ public class AppointmentController : BaseApiController
             _context.Appointments.Add(appt);
             await _context.SaveChangesAsync();
 
+            var patient = await _context.Users.FindAsync(dto.PatientId);
+            var doctor = await _context.Users.FindAsync(dto.DoctorId);
+
+            if (patient != null && !string.IsNullOrEmpty(patient.Email) && doctor != null)
+            {
+                var placeholders = new Dictionary<string, string>
+                {
+                    { "patient.FirstName", patient.FirstName },
+                    { "patient.LastName", patient.LastName },
+                    { "doctor.FirstName", doctor.FirstName },
+                    { "doctor.LastName", doctor.LastName },
+                    { "AppointmentDate", appt.AppointmentDate.ToString("f") },
+                    { "Duration", appt.Duration.TotalMinutes.ToString() },
+                    { "Reason", appt.Reason },
+                    { "Notes", appt.Notes }
+                };
+
+                var body = await _emailTemplateService.GetTemplateAsync("AppointmentConfEmail.html", placeholders);
+
+                await _notificationService.SendEmailAsync(patient.Email, "Appointment Confirmation", body);
+                _logger.LogInformation("Loading email template: {Template}", "AppointmentConfEmail.html");
+
+            }
             await _auditService.LogAuditAsync(User.GetUserId(), "AppointmentCreated", $"Created appointment for patient {dto.PatientId} (AppointmentId: {appt.Id})", "Appointment", null, Request.GetClientIpAddress());
 
             return CreatedAtAction(nameof(GetById), new { id = appt.Id }, _mapper.Map<AppointmentDto>(appt));

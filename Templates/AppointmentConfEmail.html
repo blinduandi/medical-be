@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Appointment Confirmation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f4f6f8;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            padding: 40px 50px;
+            border-radius: 15px;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+            line-height: 1.7;
+        }
+        h2 {
+            color: #0073b1;
+            font-size: 26px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        p {
+            font-size: 16px;
+            margin: 15px 0;
+        }
+        .details {
+            background-color: #f9fafb;
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        .details p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+        .footer { 
+            margin-top: 40px; 
+            font-size: 14px; 
+            color: #6c757d; 
+            border-top: 1px solid #dee2e6; 
+            padding-top: 15px;
+            text-align: center;
+        }
+        .footer a {
+            color: #0073b1; 
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Appointment Confirmation</h2>
+        <p>Dear {{patient.FirstName}} {{patient.LastName}},</p>
+        <p>Your appointment has been successfully scheduled. Here are the details:</p>
+
+        <div class="details">
+            <p><strong>Date:</strong> {{AppointmentDate}}</p>
+            <p><strong>Time:</strong> {{AppointmentTime}}</p>
+            <p><strong>Duration:</strong> {{Duration}} minutes</p>
+            <p><strong>Doctor:</strong> Dr. {{doctor.FirstName}} {{doctor.LastName}}</p>
+            <p><strong>Reason:</strong> {{Reason}}</p>
+            <p><strong>Notes:</strong> {{Notes}}</p>
+        </div>
+
+        <p>Please make sure to arrive at least 10 minutes before your appointment. If you need to reschedule, kindly contact us at <a href="mailto:support@medtrack.com">support@medtrack.com</a>.</p>
+
+        <p>We look forward to seeing you.</p>
+
+        <div class="footer">
+            &copy; {{CurrentYear}} MedTrack. All rights reserved.<br>
+            <a href="mailto:support@medtrack.com">Contact Support</a>
+        </div>
+    </div>
+</body>
+</html>
