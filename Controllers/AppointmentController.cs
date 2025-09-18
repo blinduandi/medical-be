@@ -93,7 +93,7 @@ public class AppointmentController : BaseApiController
                 })
                 .ToListAsync();
 
-            return PaginatedResponse(items, page, pageSize, total);
+            return PaginatedResponse(items, page, pageSize, total, "Appointments retrieved successfully");
         }
         catch (Exception ex)
         {
@@ -133,7 +133,7 @@ public class AppointmentController : BaseApiController
                 CreatedAt = appt.CreatedAt
             };
 
-            return SuccessResponse(dto);
+            return SuccessResponse(dto, "Appointment retrieved successfully");
         }
         catch (Exception ex)
         {
@@ -217,7 +217,23 @@ public class AppointmentController : BaseApiController
             }
             await _auditService.LogAuditAsync(User.GetUserId(), "AppointmentCreated", $"Created appointment for patient {dto.PatientId} (AppointmentId: {appt.Id})", "Appointment", null, Request.GetClientIpAddress());
 
-            return CreatedAtAction(nameof(GetById), new { id = appt.Id }, _mapper.Map<AppointmentDto>(appt));
+            // Use the patient and doctor already loaded for email to build response
+            var responseDto = new AppointmentDto
+            {
+                Id = appt.Id,
+                PatientId = appt.PatientId,
+                DoctorId = appt.DoctorId,
+                PatientName = patient != null ? $"{patient.FirstName} {patient.LastName}" : "",
+                DoctorName = doctor != null ? $"{doctor.FirstName} {doctor.LastName}" : "",
+                AppointmentDate = appt.AppointmentDate,
+                Duration = appt.Duration,
+                Status = appt.Status,
+                Reason = appt.Reason,
+                Notes = appt.Notes,
+                CreatedAt = appt.CreatedAt
+            };
+
+            return SuccessResponse(responseDto, "Appointment created successfully");
         }
         catch (Exception ex)
         {
@@ -271,7 +287,28 @@ public class AppointmentController : BaseApiController
 
             await _auditService.LogAuditAsync(User.GetUserId(), "AppointmentUpdated", $"Updated appointment {id}", "Appointment", null, Request.GetClientIpAddress());
 
-            return SuccessResponse(_mapper.Map<AppointmentDto>(appt), "Appointment updated successfully");
+            // Load the updated appointment with navigation properties for response
+            var updatedAppt = await _context.Appointments
+                .Include(a => a.Patient)
+                .Include(a => a.Doctor)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            var responseDto = new AppointmentDto
+            {
+                Id = updatedAppt!.Id,
+                PatientId = updatedAppt.PatientId,
+                DoctorId = updatedAppt.DoctorId,
+                PatientName = updatedAppt.Patient.FirstName + " " + updatedAppt.Patient.LastName,
+                DoctorName = updatedAppt.Doctor.FirstName + " " + updatedAppt.Doctor.LastName,
+                AppointmentDate = updatedAppt.AppointmentDate,
+                Duration = updatedAppt.Duration,
+                Status = updatedAppt.Status,
+                Reason = updatedAppt.Reason,
+                Notes = updatedAppt.Notes,
+                CreatedAt = updatedAppt.CreatedAt
+            };
+
+            return SuccessResponse(responseDto, "Appointment updated successfully");
         }
         catch (Exception ex)
         {
@@ -307,7 +344,7 @@ public class AppointmentController : BaseApiController
 
             await _auditService.LogAuditAsync(currentUserId, "AppointmentStatusChanged", $"Changed status of appointment {id} to {request.Status}", "Appointment", null, Request.GetClientIpAddress());
 
-            return SuccessResponse(null, "Status updated");
+            return SuccessResponse(null, "Appointment status updated successfully");
         }
         catch (Exception ex)
         {
@@ -334,7 +371,7 @@ public class AppointmentController : BaseApiController
 
             await _auditService.LogAuditAsync(User.GetUserId(), "AppointmentCancelled", $"Cancelled appointment {id}", "Appointment", null, Request.GetClientIpAddress());
 
-            return SuccessResponse(null, "Appointment cancelled");
+            return SuccessResponse(null, "Appointment cancelled successfully");
         }
         catch (Exception ex)
         {
@@ -379,7 +416,7 @@ public class AppointmentController : BaseApiController
                 })
                 .ToListAsync();
 
-            return PaginatedResponse(items, page, pageSize, total);
+            return PaginatedResponse(items, page, pageSize, total, "My appointments retrieved successfully");
         }
         catch (Exception ex)
         {
@@ -422,7 +459,7 @@ public class AppointmentController : BaseApiController
                 })
                 .ToListAsync();
 
-            return SuccessResponse(items);
+            return SuccessResponse(items, "Appointments retrieved successfully");
         }
         catch (Exception ex)
         {

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using medical_be.Models;
 
 namespace medical_be.DTOs;
@@ -14,7 +15,15 @@ public class CreateAppointmentDto
     [Required]
     public DateTime AppointmentDate { get; set; }
 
+    [JsonIgnore]
     public TimeSpan Duration { get; set; } = TimeSpan.FromMinutes(30);
+
+    // Helper property for JSON serialization
+    public int DurationMinutes 
+    { 
+        get => (int)Duration.TotalMinutes;
+        set => Duration = TimeSpan.FromMinutes(value);
+    }
 
     [MaxLength(500)]
     public string? Reason { get; set; }
