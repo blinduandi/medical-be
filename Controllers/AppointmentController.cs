@@ -431,6 +431,55 @@ public class AppointmentController : BaseApiController
         }
     }
 
+    /// <summary>
+    /// Get all appointments for the current doctor
+    /// </summary>
+    [HttpGet("doctor/all")]
+    [Authorize(Roles = "Doctor")]
+    public async Task<IActionResult> GetAllDoctorAppointments(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            var doctorId = User.GetUserId();
+
+            var query = _context.Appointments
+                .AsNoTracking()
+                .Include(a => a.Patient)
+                .Where(a => a.DoctorId == doctorId);
+
+            var total = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(a => a.AppointmentDate)
+                .Skip((Math.Max(page, 1) - 1) * Math.Clamp(pageSize, 1, 200))
+                .Take(Math.Clamp(pageSize, 1, 200))
+                .Select(a => new AppointmentDto
+                {
+                    Id = a.Id,
+                    PatientId = a.PatientId,
+                    DoctorId = a.DoctorId,
+                    PatientName = a.Patient.FirstName + " " + a.Patient.LastName,
+                    DoctorName = string.Empty, // doctor is the current user, no need to repeat
+                    AppointmentDate = a.AppointmentDate,
+                    Duration = a.Duration,
+                    Status = a.Status,
+                    Reason = a.Reason,
+                    Notes = a.Notes,
+                    CreatedAt = a.CreatedAt
+                })
+                .ToListAsync();
+
+            return PaginatedResponse(items, page, pageSize, total);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all doctor appointments");
+            return InternalServerErrorResponse("Failed to retrieve appointments");
+        }
+    }
+
+
     public class StatusChangeRequest
     {
         public AppointmentStatus Status { get; set; }
