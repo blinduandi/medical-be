@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace medical_be.Migrations.ML
+namespace medical_be.Migrations
 {
     /// <inheritdoc />
-    public partial class AddSymptomsToVisitRecord : Migration
+    public partial class CreatePatientDoctorTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

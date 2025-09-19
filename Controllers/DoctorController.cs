@@ -72,7 +72,7 @@ namespace medical_be.Controllers
         /// Search doctors by IDNP
         /// </summary>
         [HttpPost("search")]
-        //   [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Doctor")]
         public async Task<IActionResult> SearchByIDNP([FromBody] DoctorSearchDto searchDto)
         {
             try
@@ -180,7 +180,7 @@ namespace medical_be.Controllers
 
         // PUT: api/Doctor/{idnp}
         [HttpPut("{idnp}")]
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateDoctor(string idnp, [FromBody] DoctorUpdateDto dto)
         {
             var doctor = await _context.Users
@@ -229,6 +229,221 @@ namespace medical_be.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        /// <summary>
+        /// Get doctor's assigned patients
+        /// </summary>
+        [HttpGet("my-patients")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GetMyPatients([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var userId = User.GetUserId();
+                
+                var query = _context.PatientDoctors
+                    .Where(pd => pd.DoctorId == userId && pd.IsActive)
+                    .Include(pd => pd.Patient);
+
+                var totalCount = await query.CountAsync();
+                var skip = (page - 1) * pageSize;
+
+                var doctorPatients = await query
+                    .Skip(skip)
+                    .Take(pageSize)
+                    .Select(pd => new DoctorPatientDto
+                    {
+                        Id = pd.Id,
+                        PatientId = pd.PatientId,
+                        PatientName = pd.Patient.FirstName + " " + pd.Patient.LastName,
+                        PatientEmail = pd.Patient.Email ?? "",
+                        PatientPhoneNumber = pd.Patient.PhoneNumber,
+                        PatientIDNP = pd.Patient.IDNP,
+                        BloodType = pd.Patient.BloodType,
+                        DateOfBirth = pd.Patient.DateOfBirth,
+                        AssignedDate = pd.AssignedDate,
+                        IsActive = pd.IsActive,
+                        Notes = pd.Notes,
+                        AssignedBy = pd.AssignedBy,
+                        LastVisit = _context.VisitRecords
+                            .Where(v => v.PatientId == pd.PatientId && v.DoctorId == userId)
+                            .OrderByDescending(v => v.VisitDate)
+                            .Select(v => v.VisitDate)
+                            .FirstOrDefault(),
+                        TotalVisits = _context.VisitRecords
+                            .Count(v => v.PatientId == pd.PatientId && v.DoctorId == userId)
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    error = false,
+                    message = "Doctor's patients retrieved successfully",
+                    data = doctorPatients,
+                    pagination = new
+                    {
+                        currentPage = page,
+                        pageSize = pageSize,
+                        totalItems = totalCount,
+                        totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                        hasNextPage = page < Math.Ceiling((double)totalCount / pageSize),
+                        hasPreviousPage = page > 1
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving patients for doctor: {DoctorId}", User.GetUserId());
+                return StatusCode(500, new { message = "An error occurred while retrieving patients" });
+            }
+        }
+
+        /// <summary>
+        /// Search patients by IDNP, name (for doctors to view assigned patients)
+        /// </summary>
+        [HttpPost("search-my-patients")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> SearchMyPatients([FromBody] PatientSearchDto searchDto)
+        {
+            try
+            {
+                var userId = User.GetUserId();
+
+                if (string.IsNullOrWhiteSpace(searchDto.IDNP) && 
+                    string.IsNullOrWhiteSpace(searchDto.Name))
+                {
+                    return BadRequest(new { message = "At least one search parameter is required" });
+                }
+
+                var query = _context.PatientDoctors
+                    .Where(pd => pd.DoctorId == userId && pd.IsActive)
+                    .Include(pd => pd.Patient)
+                    .AsQueryable();
+
+                // Apply search filters
+                if (!string.IsNullOrWhiteSpace(searchDto.IDNP))
+                {
+                    query = query.Where(pd => pd.Patient.IDNP.Contains(searchDto.IDNP));
+                }
+
+                if (!string.IsNullOrWhiteSpace(searchDto.Name))
+                {
+                    query = query.Where(pd => 
+                        pd.Patient.FirstName.Contains(searchDto.Name) || 
+                        pd.Patient.LastName.Contains(searchDto.Name));
+                }
+
+                var foundPatients = await query
+                    .Select(pd => new DoctorPatientDto
+                    {
+                        Id = pd.Id,
+                        PatientId = pd.PatientId,
+                        PatientName = pd.Patient.FirstName + " " + pd.Patient.LastName,
+                        PatientEmail = pd.Patient.Email ?? "",
+                        PatientPhoneNumber = pd.Patient.PhoneNumber,
+                        PatientIDNP = pd.Patient.IDNP,
+                        BloodType = pd.Patient.BloodType,
+                        DateOfBirth = pd.Patient.DateOfBirth,
+                        AssignedDate = pd.AssignedDate,
+                        IsActive = pd.IsActive,
+                        Notes = pd.Notes,
+                        AssignedBy = pd.AssignedBy,
+                        LastVisit = _context.VisitRecords
+                            .Where(v => v.PatientId == pd.PatientId && v.DoctorId == userId)
+                            .OrderByDescending(v => v.VisitDate)
+                            .Select(v => v.VisitDate)
+                            .FirstOrDefault(),
+                        TotalVisits = _context.VisitRecords
+                            .Count(v => v.PatientId == pd.PatientId && v.DoctorId == userId)
+                    })
+                    .Take(20) // Limit results
+                    .ToListAsync();
+
+                // Audit log
+                await _auditService.LogAuditAsync(
+                    userId, 
+                    "DoctorPatientSearch", 
+                    $"Searched patients with criteria: IDNP={searchDto.IDNP}, Name={searchDto.Name}", 
+                    "PatientDoctor", 
+                    null, 
+                    Request.GetClientIpAddress());
+
+                return Ok(new
+                {
+                    success = true,
+                    error = false,
+                    message = "Patient search completed successfully",
+                    data = foundPatients
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching patients for doctor: {DoctorId}", User.GetUserId());
+                return StatusCode(500, new { message = "An error occurred while searching patients" });
+            }
+        }
+
+        /// <summary>
+        /// Get detailed information about a specific assigned patient
+        /// </summary>
+        [HttpGet("patient/{patientId}")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GetPatientDetails(string patientId)
+        {
+            try
+            {
+                var userId = User.GetUserId();
+
+                // Verify that this patient is assigned to the doctor
+                var patientRelation = await _context.PatientDoctors
+                    .Where(pd => pd.DoctorId == userId && pd.PatientId == patientId && pd.IsActive)
+                    .Include(pd => pd.Patient)
+                    .FirstOrDefaultAsync();
+
+                if (patientRelation == null)
+                {
+                    return NotFound(new { message = "Patient not found or not assigned to this doctor" });
+                }
+
+                // Get patient's detailed information
+                var patientDetails = new DoctorPatientDto
+                {
+                    Id = patientRelation.Id,
+                    PatientId = patientRelation.PatientId,
+                    PatientName = patientRelation.Patient.FirstName + " " + patientRelation.Patient.LastName,
+                    PatientEmail = patientRelation.Patient.Email ?? "",
+                    PatientPhoneNumber = patientRelation.Patient.PhoneNumber,
+                    PatientIDNP = patientRelation.Patient.IDNP,
+                    BloodType = patientRelation.Patient.BloodType,
+                    DateOfBirth = patientRelation.Patient.DateOfBirth,
+                    AssignedDate = patientRelation.AssignedDate,
+                    IsActive = patientRelation.IsActive,
+                    Notes = patientRelation.Notes,
+                    AssignedBy = patientRelation.AssignedBy,
+                    LastVisit = await _context.VisitRecords
+                        .Where(v => v.PatientId == patientId && v.DoctorId == userId)
+                        .OrderByDescending(v => v.VisitDate)
+                        .Select(v => v.VisitDate)
+                        .FirstOrDefaultAsync(),
+                    TotalVisits = await _context.VisitRecords
+                        .CountAsync(v => v.PatientId == patientId && v.DoctorId == userId)
+                };
+
+                return Ok(new
+                {
+                    success = true,
+                    error = false,
+                    message = "Patient details retrieved successfully",
+                    data = patientDetails
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving patient details for doctor: {DoctorId}, Patient: {PatientId}", User.GetUserId(), patientId);
+                return StatusCode(500, new { message = "An error occurred while retrieving patient details" });
+            }
         }
     }
 }

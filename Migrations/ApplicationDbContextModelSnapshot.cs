@@ -934,6 +934,56 @@ namespace medical_be.Migrations
                     b.ToTable("NotificationLogs");
                 });
 
+            modelBuilder.Entity("medical_be.Models.PatientDoctor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssignedBy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("AssignedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeactivatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DoctorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedDate");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("PatientId", "DoctorId", "IsActive")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PatientDoctor_Unique")
+                        .HasFilter("[IsActive] = 1");
+
+                    b.ToTable("PatientDoctors");
+                });
+
             modelBuilder.Entity("medical_be.Models.PatternMatch", b =>
                 {
                     b.Property<int>("Id")
@@ -1660,6 +1710,25 @@ namespace medical_be.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("medical_be.Models.PatientDoctor", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("medical_be.Models.User", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
                 });
 
             modelBuilder.Entity("medical_be.Models.PatternMatch", b =>

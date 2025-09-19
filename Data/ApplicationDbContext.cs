@@ -42,6 +42,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
     public DbSet<MedicalAlert> MedicalAlerts { get; set; }
     public DbSet<LabResult> LabResults { get; set; }
     public DbSet<Diagnosis> Diagnoses { get; set; }
+    
+    // Patient-Doctor Relationships
+    public DbSet<PatientDoctor> PatientDoctors { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -439,6 +442,33 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
             entity.HasIndex(d => d.Category);
             entity.HasIndex(d => d.IsActive);
             entity.HasIndex(d => d.CreatedAt);
+        });
+
+        // Configure PatientDoctor relationship
+        builder.Entity<PatientDoctor>(entity =>
+        {
+            entity.HasKey(pd => pd.Id);
+            entity.Property(pd => pd.AssignedBy).IsRequired().HasMaxLength(50);
+            entity.Property(pd => pd.Notes).HasMaxLength(500);
+
+            entity.HasOne(pd => pd.Patient)
+                .WithMany()
+                .HasForeignKey(pd => pd.PatientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pd => pd.Doctor)
+                .WithMany()
+                .HasForeignKey(pd => pd.DoctorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Create composite index for unique patient-doctor relationships
+            entity.HasIndex(pd => new { pd.PatientId, pd.DoctorId, pd.IsActive })
+                .HasDatabaseName("IX_PatientDoctor_Unique")
+                .IsUnique()
+                .HasFilter("[IsActive] = 1");
+
+            entity.HasIndex(pd => pd.AssignedDate);
+            entity.HasIndex(pd => pd.IsActive);
         });
     }
 }

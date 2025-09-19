@@ -126,7 +126,7 @@ namespace medical_be.Controllers
         /// Create new visit record
         /// </summary>
         [HttpPost("{patientId}/visits")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Admin")]
     public async Task<IActionResult> CreateVisitRecord(string patientId, [FromBody] CreateVisitRecordDto visitDto)
         {
             try
@@ -210,7 +210,7 @@ namespace medical_be.Controllers
         /// Add vaccination record
         /// </summary>
         [HttpPost("{patientId}/vaccinations")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Admin")]
     public async Task<IActionResult> AddVaccination(string patientId, [FromBody] CreateVaccinationDto vaccinationDto)
         {
             try
@@ -292,7 +292,7 @@ namespace medical_be.Controllers
         /// Add allergy record
         /// </summary>
         [HttpPost("{patientId}/allergies")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Admin")]
     public async Task<IActionResult> AddAllergy(string patientId, [FromBody] CreateAllergyDto allergyDto)
         {
             try
@@ -425,6 +425,234 @@ namespace medical_be.Controllers
             {
                 _logger.LogError(ex, "Error retrieving dashboard data for patient: {PatientId}", User.GetUserId());
                 return InternalServerErrorResponse("An error occurred while retrieving the dashboard data");
+            }
+        }
+
+        /// <summary>
+        /// Get patient's assigned doctors
+        /// </summary>
+        [HttpGet("my-doctors")]
+        [Authorize(Roles = "Patient,Admin")]
+        public async Task<IActionResult> GetMyDoctors()
+        {
+            try
+            {
+                var userId = User.GetUserId();
+                var patientDoctors = await _context.PatientDoctors
+                    .Where(pd => pd.PatientId == userId && pd.IsActive)
+                    .Include(pd => pd.Doctor)
+                    .Select(pd => new PatientDoctorDto
+                    {
+                        Id = pd.Id,
+                        DoctorId = pd.DoctorId,
+                        DoctorName = pd.Doctor.FirstName + " " + pd.Doctor.LastName,
+                        DoctorEmail = pd.Doctor.Email ?? "",
+                        DoctorPhoneNumber = pd.Doctor.PhoneNumber,
+                        ClinicId = pd.Doctor.ClinicId,
+                        AssignedDate = pd.AssignedDate,
+                        IsActive = pd.IsActive,
+                        Notes = pd.Notes,
+                        AssignedBy = pd.AssignedBy
+                    })
+                    .ToListAsync();
+
+                return SuccessResponse(patientDoctors, "Patient's doctors retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving doctors for patient: {PatientId}", User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving doctors");
+            }
+        }
+
+        /// <summary>
+        /// Search available doctors to add
+        /// </summary>
+        [HttpGet("available-doctors")]
+        [Authorize(Roles = "Patient,Admin")]
+        public async Task<IActionResult> GetAvailableDoctors([FromQuery] string? search)
+        {
+            try
+            {
+                var userId = User.GetUserId();
+                
+                // Get currently assigned doctor IDs
+                var assignedDoctorIds = await _context.PatientDoctors
+                    .Where(pd => pd.PatientId == userId && pd.IsActive)
+                    .Select(pd => pd.DoctorId)
+                    .ToListAsync();
+
+                var doctorsQuery = _context.Users
+                    .Where(u => u.UserRoles.Any(r => r.Role.Name == "Doctor") && u.IsActive);
+
+                // Apply search filter if provided
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    doctorsQuery = doctorsQuery.Where(u => 
+                        u.FirstName.Contains(search) || 
+                        u.LastName.Contains(search) || 
+                        u.Email!.Contains(search) ||
+                        u.IDNP.Contains(search));
+                }
+
+                var availableDoctors = await doctorsQuery
+                    .Select(u => new AvailableDoctorDto
+                    {
+                        Id = u.Id,
+                        Name = u.FirstName + " " + u.LastName,
+                        Email = u.Email ?? "",
+                        PhoneNumber = u.PhoneNumber,
+                        ClinicId = u.ClinicId,
+                        IDNP = u.IDNP,
+                        IsAlreadyAssigned = assignedDoctorIds.Contains(u.Id)
+                    })
+                    .Take(20) // Limit results
+                    .ToListAsync();
+
+                return SuccessResponse(availableDoctors, "Available doctors retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving available doctors for patient: {PatientId}", User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving available doctors");
+            }
+        }
+
+        /// <summary>
+        /// Add a doctor to patient's list
+        /// </summary>
+        [HttpPost("add-doctor")]
+        [Authorize(Roles = "Patient,Admin")]
+        public async Task<IActionResult> AddDoctor([FromBody] AddDoctorToPatientDto dto)
+        {
+            try
+            {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
+                var userId = User.GetUserId();
+
+                // Check if doctor exists and is active
+                var doctor = await _context.Users
+                    .Where(u => u.Id == dto.DoctorId && u.UserRoles.Any(r => r.Role.Name == "Doctor") && u.IsActive)
+                    .FirstOrDefaultAsync();
+
+                if (doctor == null)
+                {
+                    return NotFoundResponse("Doctor not found or inactive");
+                }
+
+                // Check if relationship already exists
+                var existingRelation = await _context.PatientDoctors
+                    .Where(pd => pd.PatientId == userId && pd.DoctorId == dto.DoctorId && pd.IsActive)
+                    .FirstOrDefaultAsync();
+
+                if (existingRelation != null)
+                {
+                    return ValidationErrorResponse("Doctor is already assigned to this patient");
+                }
+
+                // Create new relationship
+                var patientDoctor = new PatientDoctor
+                {
+                    PatientId = userId,
+                    DoctorId = dto.DoctorId,
+                    AssignedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    Notes = dto.Notes,
+                    AssignedBy = "Patient"
+                };
+
+                _context.PatientDoctors.Add(patientDoctor);
+                await _context.SaveChangesAsync();
+
+                // Log audit
+                await _auditService.LogAuditAsync(
+                    userId, 
+                    "PatientDoctorAdded", 
+                    $"Patient added doctor {doctor.FirstName} {doctor.LastName} (ID: {dto.DoctorId})", 
+                    "PatientDoctor", 
+                    null, 
+                    Request.GetClientIpAddress());
+
+                // Return the created relationship
+                var response = new PatientDoctorDto
+                {
+                    Id = patientDoctor.Id,
+                    DoctorId = patientDoctor.DoctorId,
+                    DoctorName = doctor.FirstName + " " + doctor.LastName,
+                    DoctorEmail = doctor.Email ?? "",
+                    DoctorPhoneNumber = doctor.PhoneNumber,
+                    ClinicId = doctor.ClinicId,
+                    AssignedDate = patientDoctor.AssignedDate,
+                    IsActive = patientDoctor.IsActive,
+                    Notes = patientDoctor.Notes,
+                    AssignedBy = patientDoctor.AssignedBy
+                };
+
+                return SuccessResponse(response, "Doctor added successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding doctor to patient: {PatientId}, Doctor: {DoctorId}", User.GetUserId(), dto.DoctorId);
+                return InternalServerErrorResponse("An error occurred while adding the doctor");
+            }
+        }
+
+        /// <summary>
+        /// Remove a doctor from patient's list
+        /// </summary>
+        [HttpPost("remove-doctor")]
+        [Authorize(Roles = "Patient,Admin")]
+        public async Task<IActionResult> RemoveDoctor([FromBody] RemoveDoctorFromPatientDto dto)
+        {
+            try
+            {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
+                var userId = User.GetUserId();
+
+                // Find the active relationship
+                var patientDoctor = await _context.PatientDoctors
+                    .Include(pd => pd.Doctor)
+                    .Where(pd => pd.PatientId == userId && pd.DoctorId == dto.DoctorId && pd.IsActive)
+                    .FirstOrDefaultAsync();
+
+                if (patientDoctor == null)
+                {
+                    return NotFoundResponse("Doctor relationship not found or already inactive");
+                }
+
+                // Deactivate the relationship
+                patientDoctor.IsActive = false;
+                patientDoctor.DeactivatedDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(dto.Reason))
+                {
+                    patientDoctor.Notes = string.IsNullOrWhiteSpace(patientDoctor.Notes) 
+                        ? $"Removed: {dto.Reason}"
+                        : $"{patientDoctor.Notes}\nRemoved: {dto.Reason}";
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Log audit
+                await _auditService.LogAuditAsync(
+                    userId, 
+                    "PatientDoctorRemoved", 
+                    $"Patient removed doctor {patientDoctor.Doctor.FirstName} {patientDoctor.Doctor.LastName} (ID: {dto.DoctorId}). Reason: {dto.Reason}", 
+                    "PatientDoctor", 
+                    null, 
+                    Request.GetClientIpAddress());
+
+                return SuccessResponse(null, "Doctor removed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing doctor from patient: {PatientId}, Doctor: {DoctorId}", User.GetUserId(), dto.DoctorId);
+                return InternalServerErrorResponse("An error occurred while removing the doctor");
             }
         }
     }

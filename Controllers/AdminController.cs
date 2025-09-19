@@ -913,5 +913,272 @@ namespace medical_be.Controllers
         }
 
         #endregion
+
+        #region Patient-Doctor Relationship Management
+
+        /// <summary>
+        /// Get all patient-doctor relationships with pagination
+        /// </summary>
+        [HttpGet("patient-doctor-relationships")]
+        public async Task<IActionResult> GetPatientDoctorRelationships([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] bool? isActive = null)
+        {
+            try
+            {
+                var query = _context.PatientDoctors
+                    .Include(pd => pd.Patient)
+                    .Include(pd => pd.Doctor)
+                    .AsQueryable();
+
+                if (isActive.HasValue)
+                {
+                    query = query.Where(pd => pd.IsActive == isActive.Value);
+                }
+
+                var totalCount = await query.CountAsync();
+                var relationships = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(pd => new
+                    {
+                        Id = pd.Id,
+                        PatientId = pd.PatientId,
+                        PatientName = pd.Patient.FirstName + " " + pd.Patient.LastName,
+                        PatientIDNP = pd.Patient.IDNP,
+                        DoctorId = pd.DoctorId,
+                        DoctorName = pd.Doctor.FirstName + " " + pd.Doctor.LastName,
+                        DoctorIDNP = pd.Doctor.IDNP,
+                        AssignedDate = pd.AssignedDate,
+                        IsActive = pd.IsActive,
+                        AssignedBy = pd.AssignedBy,
+                        Notes = pd.Notes,
+                        DeactivatedDate = pd.DeactivatedDate
+                    })
+                    .ToListAsync();
+
+                return SuccessResponse(new
+                {
+                    relationships = relationships,
+                    pagination = new
+                    {
+                        currentPage = page,
+                        pageSize = pageSize,
+                        totalItems = totalCount,
+                        totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                    }
+                }, "Patient-doctor relationships retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving patient-doctor relationships");
+                return InternalServerErrorResponse("An error occurred while retrieving relationships");
+            }
+        }
+
+        /// <summary>
+        /// Assign a patient to a doctor (admin override)
+        /// </summary>
+        [HttpPost("assign-patient-to-doctor")]
+        public async Task<IActionResult> AssignPatientToDoctor([FromBody] AdminAssignPatientDoctorDto dto)
+        {
+            try
+            {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
+                // Verify patient exists and is a patient
+                var patient = await _context.Users
+                    .Where(u => u.Id == dto.PatientId && u.UserRoles.Any(r => r.Role.Name == "Patient"))
+                    .FirstOrDefaultAsync();
+
+                if (patient == null)
+                {
+                    return NotFoundResponse("Patient not found");
+                }
+
+                // Verify doctor exists and is a doctor
+                var doctor = await _context.Users
+                    .Where(u => u.Id == dto.DoctorId && u.UserRoles.Any(r => r.Role.Name == "Doctor"))
+                    .FirstOrDefaultAsync();
+
+                if (doctor == null)
+                {
+                    return NotFoundResponse("Doctor not found");
+                }
+
+                // Check if relationship already exists
+                var existingRelation = await _context.PatientDoctors
+                    .Where(pd => pd.PatientId == dto.PatientId && pd.DoctorId == dto.DoctorId && pd.IsActive)
+                    .FirstOrDefaultAsync();
+
+                if (existingRelation != null)
+                {
+                    return ValidationErrorResponse("Patient is already assigned to this doctor");
+                }
+
+                // Create new relationship
+                var patientDoctor = new PatientDoctor
+                {
+                    PatientId = dto.PatientId,
+                    DoctorId = dto.DoctorId,
+                    AssignedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    Notes = dto.Notes,
+                    AssignedBy = "Admin"
+                };
+
+                _context.PatientDoctors.Add(patientDoctor);
+                await _context.SaveChangesAsync();
+
+                // Log audit
+                await _auditService.LogAuditAsync(
+                    User.GetUserId(), 
+                    "AdminPatientDoctorAssignment", 
+                    $"Admin assigned patient {patient.FirstName} {patient.LastName} (ID: {dto.PatientId}) to doctor {doctor.FirstName} {doctor.LastName} (ID: {dto.DoctorId})", 
+                    "PatientDoctor", 
+                    null, 
+                    Request.GetClientIpAddress());
+
+                return SuccessResponse(new
+                {
+                    Id = patientDoctor.Id,
+                    PatientName = patient.FirstName + " " + patient.LastName,
+                    DoctorName = doctor.FirstName + " " + doctor.LastName,
+                    AssignedDate = patientDoctor.AssignedDate,
+                    AssignedBy = patientDoctor.AssignedBy
+                }, "Patient successfully assigned to doctor");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning patient to doctor");
+                return InternalServerErrorResponse("An error occurred while assigning patient to doctor");
+            }
+        }
+
+        /// <summary>
+        /// Remove patient-doctor relationship (admin override)
+        /// </summary>
+        [HttpPost("remove-patient-doctor-relationship")]
+        public async Task<IActionResult> RemovePatientDoctorRelationship([FromBody] AdminRemovePatientDoctorDto dto)
+        {
+            try
+            {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
+                var relationship = await _context.PatientDoctors
+                    .Include(pd => pd.Patient)
+                    .Include(pd => pd.Doctor)
+                    .Where(pd => pd.Id == dto.RelationshipId && pd.IsActive)
+                    .FirstOrDefaultAsync();
+
+                if (relationship == null)
+                {
+                    return NotFoundResponse("Patient-doctor relationship not found or already inactive");
+                }
+
+                // Deactivate the relationship
+                relationship.IsActive = false;
+                relationship.DeactivatedDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(dto.Reason))
+                {
+                    relationship.Notes = string.IsNullOrWhiteSpace(relationship.Notes) 
+                        ? $"Removed by Admin: {dto.Reason}"
+                        : $"{relationship.Notes}\nRemoved by Admin: {dto.Reason}";
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Log audit
+                await _auditService.LogAuditAsync(
+                    User.GetUserId(), 
+                    "AdminPatientDoctorRemoval", 
+                    $"Admin removed relationship between patient {relationship.Patient.FirstName} {relationship.Patient.LastName} and doctor {relationship.Doctor.FirstName} {relationship.Doctor.LastName}. Reason: {dto.Reason}", 
+                    "PatientDoctor", 
+                    null, 
+                    Request.GetClientIpAddress());
+
+                return SuccessResponse(null, "Patient-doctor relationship removed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing patient-doctor relationship");
+                return InternalServerErrorResponse("An error occurred while removing the relationship");
+            }
+        }
+
+        /// <summary>
+        /// Get statistics about patient-doctor relationships
+        /// </summary>
+        [HttpGet("patient-doctor-statistics")]
+        public async Task<IActionResult> GetPatientDoctorStatistics()
+        {
+            try
+            {
+                var totalActiveRelationships = await _context.PatientDoctors
+                    .CountAsync(pd => pd.IsActive);
+
+                var totalInactiveRelationships = await _context.PatientDoctors
+                    .CountAsync(pd => !pd.IsActive);
+
+                var patientsWithDoctors = await _context.PatientDoctors
+                    .Where(pd => pd.IsActive)
+                    .Select(pd => pd.PatientId)
+                    .Distinct()
+                    .CountAsync();
+
+                var doctorsWithPatients = await _context.PatientDoctors
+                    .Where(pd => pd.IsActive)
+                    .Select(pd => pd.DoctorId)
+                    .Distinct()
+                    .CountAsync();
+
+                var totalPatients = await _context.Users
+                    .Where(u => u.UserRoles.Any(r => r.Role.Name == "Patient"))
+                    .CountAsync();
+
+                var totalDoctors = await _context.Users
+                    .Where(u => u.UserRoles.Any(r => r.Role.Name == "Doctor"))
+                    .CountAsync();
+
+                var averagePatientsPerDoctor = doctorsWithPatients > 0 
+                    ? (double)patientsWithDoctors / doctorsWithPatients 
+                    : 0;
+
+                var topDoctorsByPatients = await _context.PatientDoctors
+                    .Where(pd => pd.IsActive)
+                    .Include(pd => pd.Doctor)
+                    .GroupBy(pd => new { pd.DoctorId, pd.Doctor.FirstName, pd.Doctor.LastName })
+                    .Select(g => new
+                    {
+                        DoctorId = g.Key.DoctorId,
+                        DoctorName = g.Key.FirstName + " " + g.Key.LastName,
+                        PatientCount = g.Count()
+                    })
+                    .OrderByDescending(x => x.PatientCount)
+                    .Take(10)
+                    .ToListAsync();
+
+                return SuccessResponse(new
+                {
+                    TotalActiveRelationships = totalActiveRelationships,
+                    TotalInactiveRelationships = totalInactiveRelationships,
+                    PatientsWithDoctors = patientsWithDoctors,
+                    PatientsWithoutDoctors = totalPatients - patientsWithDoctors,
+                    DoctorsWithPatients = doctorsWithPatients,
+                    DoctorsWithoutPatients = totalDoctors - doctorsWithPatients,
+                    AveragePatientsPerDoctor = Math.Round(averagePatientsPerDoctor, 2),
+                    TopDoctorsByPatients = topDoctorsByPatients
+                }, "Patient-doctor statistics retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving patient-doctor statistics");
+                return InternalServerErrorResponse("An error occurred while retrieving statistics");
+            }
+        }
+
+        #endregion
     }
 }

@@ -6,7 +6,8 @@ namespace medical_be.DTOs;
 public enum UserRegistrationType
 {
     Patient = 0,
-    Doctor = 1
+    Doctor = 1,
+    Admin = 2
 }
 
 public class RegisterDto
