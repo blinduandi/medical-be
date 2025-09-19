@@ -224,7 +224,14 @@ public class AuthService : IAuthService
     // // -------------------------------------------
 
 		// Assign role based on UserRole parameter
-		var roleName = registerDto.UserRole == medical_be.DTOs.UserRegistrationType.Doctor ? "Doctor" : "Patient";
+		var roleName = registerDto.UserRole switch
+		{
+			medical_be.DTOs.UserRegistrationType.Doctor => "Doctor",
+			medical_be.DTOs.UserRegistrationType.Admin => "Admin",
+			medical_be.DTOs.UserRegistrationType.Patient => "Patient",
+			_ => "Patient" // Default fallback
+		};
+		
 		var roleResult = await _userManager.AddToRoleAsync(user, roleName);
 		if (!roleResult.Succeeded)
 		{
