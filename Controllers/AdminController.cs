@@ -221,7 +221,7 @@ namespace medical_be.Controllers
 
                 // Audit log
                 await _auditService.LogAuditAsync(User.GetUserId(), "UserCreated", $"Created user: {createUserDto.Email}", "User", null, Request.GetClientIpAddress());
-                
+
                 var userDto = _mapper.Map<PatientProfileDto>(user);
                 return SuccessResponse(userDto, "User created successfully");
             }
@@ -286,7 +286,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating user: {UserId}", userId);
-                return InternalServerErrorResponse( "Internal server error");
+                return InternalServerErrorResponse("Internal server error");
             }
         }
 
@@ -330,7 +330,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting user: {UserId}", userId);
-                return InternalServerErrorResponse( "Internal server error");
+                return InternalServerErrorResponse("Internal server error");
             }
         }
 
@@ -369,7 +369,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error assigning role to user: {UserId}", userId);
-                return InternalServerErrorResponse( "Internal server error");
+                return InternalServerErrorResponse("Internal server error");
             }
         }
 
@@ -402,7 +402,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error removing role from user: {UserId}", userId);
-                return InternalServerErrorResponse( "Internal server error");
+                return InternalServerErrorResponse("Internal server error");
             }
         }
 
@@ -425,6 +425,10 @@ namespace medical_be.Controllers
                     .Where(v => v.VisitDate >= DateTime.UtcNow.AddDays(-30))
                     .CountAsync();
 
+                var activeDoctors = (await _userManager.GetUsersInRoleAsync("Doctor"))
+                        .Count(d => d.IsActive);
+
+
                 var statistics = new
                 {
                     TotalUsers = totalUsers,
@@ -433,6 +437,7 @@ namespace medical_be.Controllers
                     TotalDoctors = totalDoctors,
                     TotalPatients = totalPatients,
                     TotalVisits = totalVisits,
+                    ActiveDoctors = activeDoctors,
                     TotalDocuments = totalDocuments,
                     RecentVisits = recentVisits,
                     GeneratedAt = DateTime.UtcNow
@@ -443,7 +448,7 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting statistics");
-                return InternalServerErrorResponse( "Internal server error");
+                return InternalServerErrorResponse("Internal server error");
             }
         }
 
@@ -481,7 +486,7 @@ namespace medical_be.Controllers
                         RecentVisits = u.PatientVisitRecords.Count(v => v.VisitDate >= DateTime.UtcNow.AddMonths(-6)),
                         LastVisit = u.PatientVisitRecords.OrderByDescending(v => v.VisitDate).FirstOrDefault(),
                         HasChronicConditions = u.PatientAllergies.Any(a => a.Severity == AllergySeverity.Severe),
-                        RecentAbnormalLabs = u.LabResults.Count(lr => lr.TestDate >= DateTime.UtcNow.AddMonths(-3) && 
+                        RecentAbnormalLabs = u.LabResults.Count(lr => lr.TestDate >= DateTime.UtcNow.AddMonths(-3) &&
                                                                      (lr.Status == "HIGH" || lr.Status == "LOW" || lr.Status == "CRITICAL"))
                     })
                     .ToListAsync();
@@ -620,8 +625,8 @@ namespace medical_be.Controllers
                     NextAnalysisScheduled = DateTime.UtcNow.AddHours(6)
                 };
 
-                await _auditService.LogAuditAsync(User.GetUserId(), "MedicalAnalyticsGenerated", 
-                    $"Generated medical analytics for {patients.Count} patients with {patternAlerts.Count} alerts", 
+                await _auditService.LogAuditAsync(User.GetUserId(), "MedicalAnalyticsGenerated",
+                    $"Generated medical analytics for {patients.Count} patients with {patternAlerts.Count} alerts",
                     "Analytics", null, Request.GetClientIpAddress());
 
                 return SuccessResponse(analytics, "Medical analytics completed successfully");
@@ -645,8 +650,8 @@ namespace medical_be.Controllers
 
                 var result = await _patternDetectionService.RunCompleteAnalysisAsync();
 
-                await _auditService.LogAuditAsync(User.GetUserId(), "PatternAnalysisTriggered", 
-                    $"Manual pattern analysis completed - {result.Summary.TotalAlerts} alerts, {result.Summary.TotalHighRiskPatients} high-risk patients", 
+                await _auditService.LogAuditAsync(User.GetUserId(), "PatternAnalysisTriggered",
+                    $"Manual pattern analysis completed - {result.Summary.TotalAlerts} alerts, {result.Summary.TotalHighRiskPatients} high-risk patients",
                     "Analytics", null, Request.GetClientIpAddress());
 
                 return SuccessResponse(result, "Pattern analysis completed successfully");
@@ -769,8 +774,8 @@ namespace medical_be.Controllers
         /// <summary>
         /// Seed large dataset with 10,000 users and comprehensive medical data
         /// </summary>
-    [HttpPost("seed-large-dataset")]
-    [AllowAnonymous]
+        [HttpPost("seed-large-dataset")]
+        [AllowAnonymous]
         public async Task<IActionResult> SeedLargeDataset([FromQuery] int userCount = 10000)
         {
             try
@@ -778,7 +783,7 @@ namespace medical_be.Controllers
                 var isAlreadySeeded = await _dataSeedingService.IsDataAlreadySeededAsync();
                 if (isAlreadySeeded)
                 {
-                    return SuccessResponse(new { Message = "Dataset already seeded", UserCount = await _context.Users.CountAsync() }, 
+                    return SuccessResponse(new { Message = "Dataset already seeded", UserCount = await _context.Users.CountAsync() },
                         "Dataset already exists");
                 }
 
@@ -800,11 +805,11 @@ namespace medical_be.Controllers
                     }
                 });
 
-                await _auditService.LogAuditAsync(User.GetUserId(), "LargeDatasetSeedingStarted", 
-                    $"Started seeding {userCount} users with medical data", 
+                await _auditService.LogAuditAsync(User.GetUserId(), "LargeDatasetSeedingStarted",
+                    $"Started seeding {userCount} users with medical data",
                     "DataSeeding", null, Request.GetClientIpAddress());
 
-                return SuccessResponse(new { Message = $"Started seeding {userCount} users in background", UserCount = userCount }, 
+                return SuccessResponse(new { Message = $"Started seeding {userCount} users in background", UserCount = userCount },
                     "Large dataset seeding started");
             }
             catch (Exception ex)
@@ -817,8 +822,8 @@ namespace medical_be.Controllers
         /// <summary>
         /// Get seeding status
         /// </summary>
-    [HttpGet("seeding-status")]
-    [AllowAnonymous]
+        [HttpGet("seeding-status")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetSeedingStatus()
         {
             try
@@ -1032,11 +1037,11 @@ namespace medical_be.Controllers
 
                 // Log audit
                 await _auditService.LogAuditAsync(
-                    User.GetUserId(), 
-                    "AdminPatientDoctorAssignment", 
-                    $"Admin assigned patient {patient.FirstName} {patient.LastName} (ID: {dto.PatientId}) to doctor {doctor.FirstName} {doctor.LastName} (ID: {dto.DoctorId})", 
-                    "PatientDoctor", 
-                    null, 
+                    User.GetUserId(),
+                    "AdminPatientDoctorAssignment",
+                    $"Admin assigned patient {patient.FirstName} {patient.LastName} (ID: {dto.PatientId}) to doctor {doctor.FirstName} {doctor.LastName} (ID: {dto.DoctorId})",
+                    "PatientDoctor",
+                    null,
                     Request.GetClientIpAddress());
 
                 return SuccessResponse(new
@@ -1083,7 +1088,7 @@ namespace medical_be.Controllers
                 relationship.DeactivatedDate = DateTime.UtcNow;
                 if (!string.IsNullOrWhiteSpace(dto.Reason))
                 {
-                    relationship.Notes = string.IsNullOrWhiteSpace(relationship.Notes) 
+                    relationship.Notes = string.IsNullOrWhiteSpace(relationship.Notes)
                         ? $"Removed by Admin: {dto.Reason}"
                         : $"{relationship.Notes}\nRemoved by Admin: {dto.Reason}";
                 }
@@ -1092,11 +1097,11 @@ namespace medical_be.Controllers
 
                 // Log audit
                 await _auditService.LogAuditAsync(
-                    User.GetUserId(), 
-                    "AdminPatientDoctorRemoval", 
-                    $"Admin removed relationship between patient {relationship.Patient.FirstName} {relationship.Patient.LastName} and doctor {relationship.Doctor.FirstName} {relationship.Doctor.LastName}. Reason: {dto.Reason}", 
-                    "PatientDoctor", 
-                    null, 
+                    User.GetUserId(),
+                    "AdminPatientDoctorRemoval",
+                    $"Admin removed relationship between patient {relationship.Patient.FirstName} {relationship.Patient.LastName} and doctor {relationship.Doctor.FirstName} {relationship.Doctor.LastName}. Reason: {dto.Reason}",
+                    "PatientDoctor",
+                    null,
                     Request.GetClientIpAddress());
 
                 return SuccessResponse(null, "Patient-doctor relationship removed successfully");
@@ -1142,8 +1147,8 @@ namespace medical_be.Controllers
                     .Where(u => u.UserRoles.Any(r => r.Role.Name == "Doctor"))
                     .CountAsync();
 
-                var averagePatientsPerDoctor = doctorsWithPatients > 0 
-                    ? (double)patientsWithDoctors / doctorsWithPatients 
+                var averagePatientsPerDoctor = doctorsWithPatients > 0
+                    ? (double)patientsWithDoctors / doctorsWithPatients
                     : 0;
 
                 var topDoctorsByPatients = await _context.PatientDoctors
@@ -1178,7 +1183,38 @@ namespace medical_be.Controllers
                 return InternalServerErrorResponse("An error occurred while retrieving statistics");
             }
         }
+        
+        [HttpGet("dashboard")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetDashboard()
+        {
+            try
+            {
+                var totalDoctors = (await _userManager.GetUsersInRoleAsync("Doctor")).Count;
+                var totalPatients = (await _userManager.GetUsersInRoleAsync("Patient")).Count;
+
+                // Count active doctors
+                var activeDoctorsCount = await _context.Users.CountAsync(u => u.IsActive && u.UserRoles.Any(r => r.Role.Name == "Doctor"));
+
+                return Ok(new
+                {
+                    data = new
+                    {
+                        totalDoctors,
+                        activeDoctorsCount,
+                        totalPatients
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving admin dashboard data");
+                return StatusCode(500, new { message = "An error occurred while retrieving the admin dashboard data" });
+            }
+        }
+
 
         #endregion
+
     }
 }
