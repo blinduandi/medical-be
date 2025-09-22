@@ -33,6 +33,11 @@ public class User : IdentityUser
     
     [MaxLength(100)]
     public string? ClinicId { get; set; } // For doctors
+    [MaxLength(100)]
+    public string? Specialty { get; set; } // Doctor's specialty
+
+    [MaxLength(100)]
+    public string? Experience { get; set; } // Doctor's experience (as string)
     
     public bool IsMFAEnabled { get; set; } = false;
     public string? MFASecret { get; set; }

@@ -34,6 +34,8 @@ Authorization: Bearer YOUR_JWT_TOKEN
     "bloodType": "A+",
     "address": "Chisinau, Moldova",
     "clinicId": null,
+    "specialty": null,
+    "experience": null,
     "isEmailVerified": true,
     "createdAt": "2025-09-11T06:00:00Z",
     "roles": ["Patient"],

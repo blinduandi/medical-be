@@ -12,8 +12,8 @@ using medical_be.Data;
 namespace medical_be.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250909060343_AddEmailVerification")]
-    partial class AddEmailVerification
+    [Migration("20250922082028_AddDoctorFields")]
+    partial class AddDoctorFields
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -157,11 +157,16 @@ namespace medical_be.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PatientId");
 
                     b.HasIndex("RecordedById");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Allergies");
                 });
@@ -264,6 +269,270 @@ namespace medical_be.Migrations
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("medical_be.Models.Diagnosis", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("DiagnosedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DiagnosisCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("DiagnosisName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DoctorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ResolvedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Severity")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DiagnosedDate");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Diagnoses");
+                });
+
+            modelBuilder.Entity("medical_be.Models.FileType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AllowedExtensions")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("MaxSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("FileTypes");
+                });
+
+            modelBuilder.Entity("medical_be.Models.LabResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LabName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal?>("ReferenceMax")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ReferenceMin")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TestCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("TestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TestName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("Value")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TestDate");
+
+                    b.HasIndex("TestName");
+
+                    b.ToTable("LabResults");
+                });
+
+            modelBuilder.Entity("medical_be.Models.MedicalAlert", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AlertType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PatientCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("PatternMatchId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReadBy")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("RecommendedActions")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlertType");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IsRead");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("PatternMatchId");
+
+                    b.HasIndex("ReadBy");
+
+                    b.HasIndex("Severity");
+
+                    b.ToTable("MedicalAlerts");
+                });
+
             modelBuilder.Entity("medical_be.Models.MedicalDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -333,6 +602,167 @@ namespace medical_be.Migrations
                     b.ToTable("MedicalDocuments");
                 });
 
+            modelBuilder.Entity("medical_be.Models.MedicalFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BlurHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Extension")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsTemporary")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Metadata")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ModelId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ModelType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Password")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TypeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("DeletedById");
+
+                    b.HasIndex("IsTemporary");
+
+                    b.HasIndex("TypeId");
+
+                    b.HasIndex("UpdatedById");
+
+                    b.HasIndex("ModelType", "ModelId");
+
+                    b.ToTable("MedicalFiles");
+                });
+
+            modelBuilder.Entity("medical_be.Models.MedicalPattern", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("ConfidenceThreshold")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MinimumCases")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OutcomeCondition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TriggerCondition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.ToTable("MedicalPatterns");
+                });
+
             modelBuilder.Entity("medical_be.Models.MedicalRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -395,6 +825,61 @@ namespace medical_be.Migrations
                     b.ToTable("MedicalRecords");
                 });
 
+            modelBuilder.Entity("medical_be.Models.NotificationCampaign", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DeliveryStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("paused");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("MainCompanyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NotificationBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NotificationTitle")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("email");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("notification_campaigns", (string)null);
+                });
+
             modelBuilder.Entity("medical_be.Models.NotificationLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -450,6 +935,102 @@ namespace medical_be.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("NotificationLogs");
+                });
+
+            modelBuilder.Entity("medical_be.Models.PatientDoctor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssignedBy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("AssignedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeactivatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DoctorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedDate");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("PatientId", "DoctorId", "IsActive")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PatientDoctor_Unique")
+                        .HasFilter("[IsActive] = 1");
+
+                    b.ToTable("PatientDoctors");
+                });
+
+            modelBuilder.Entity("medical_be.Models.PatternMatch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("DetectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsNotified")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MatchingData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("NotifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("PatternId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfidenceScore");
+
+                    b.HasIndex("DetectedAt");
+
+                    b.HasIndex("IsNotified");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("PatternId");
+
+                    b.ToTable("PatternMatches");
                 });
 
             modelBuilder.Entity("medical_be.Models.Permission", b =>
@@ -561,6 +1142,62 @@ namespace medical_be.Migrations
                     b.ToTable("RolePermissions");
                 });
 
+            modelBuilder.Entity("medical_be.Models.SingleNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("CampaignId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("MainCompanyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ScheduledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("waiting_for_sending");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ToEmail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId");
+
+                    b.ToTable("notifications", (string)null);
+                });
+
             modelBuilder.Entity("medical_be.Models.User", b =>
                 {
                     b.Property<string>("Id")
@@ -581,15 +1218,6 @@ namespace medical_be.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    // Add doctor-specific fields
-                    b.Property<string>("Specialty")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Experience")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -606,6 +1234,10 @@ namespace medical_be.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Experience")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -663,6 +1295,10 @@ namespace medical_be.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Specialty")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
@@ -752,6 +1388,9 @@ namespace medical_be.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("VaccineName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -762,6 +1401,8 @@ namespace medical_be.Migrations
                     b.HasIndex("AdministeredById");
 
                     b.HasIndex("PatientId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Vaccinations");
                 });
@@ -815,6 +1456,9 @@ namespace medical_be.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateTime>("VisitDate")
                         .HasColumnType("datetime2");
 
@@ -826,6 +1470,8 @@ namespace medical_be.Migrations
                     b.HasIndex("DoctorId");
 
                     b.HasIndex("PatientId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("VisitRecords");
                 });
@@ -879,6 +1525,10 @@ namespace medical_be.Migrations
                         .HasForeignKey("RecordedById")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("medical_be.Models.User", null)
+                        .WithMany("Allergies")
+                        .HasForeignKey("UserId");
+
                     b.Navigation("Patient");
 
                     b.Navigation("RecordedBy");
@@ -901,6 +1551,65 @@ namespace medical_be.Migrations
                     b.Navigation("Doctor");
 
                     b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("medical_be.Models.Diagnosis", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "Doctor")
+                        .WithMany("DoctorDiagnoses")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("medical_be.Models.User", "Patient")
+                        .WithMany("PatientDiagnoses")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("medical_be.Models.User", null)
+                        .WithMany("Diagnoses")
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("medical_be.Models.LabResult", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "Patient")
+                        .WithMany("LabResults")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("medical_be.Models.MedicalAlert", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "Patient")
+                        .WithMany("PatientAlerts")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("medical_be.Models.PatternMatch", "PatternMatch")
+                        .WithMany("Alerts")
+                        .HasForeignKey("PatternMatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("medical_be.Models.User", "Reader")
+                        .WithMany("ReadAlerts")
+                        .HasForeignKey("ReadBy")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("PatternMatch");
+
+                    b.Navigation("Reader");
                 });
 
             modelBuilder.Entity("medical_be.Models.MedicalDocument", b =>
@@ -927,6 +1636,55 @@ namespace medical_be.Migrations
                     b.Navigation("UploadedBy");
 
                     b.Navigation("VisitRecord");
+                });
+
+            modelBuilder.Entity("medical_be.Models.MedicalFile", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("medical_be.Models.User", "DeletedBy")
+                        .WithMany()
+                        .HasForeignKey("DeletedById")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("medical_be.Models.FileType", "Type")
+                        .WithMany("Files")
+                        .HasForeignKey("TypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("medical_be.Models.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedById")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("DeletedBy");
+
+                    b.Navigation("Type");
+
+                    b.Navigation("UpdatedBy");
+                });
+
+            modelBuilder.Entity("medical_be.Models.MedicalPattern", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("medical_be.Models.User", "Updater")
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("Updater");
                 });
 
             modelBuilder.Entity("medical_be.Models.MedicalRecord", b =>
@@ -965,6 +1723,44 @@ namespace medical_be.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("medical_be.Models.PatientDoctor", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("medical_be.Models.User", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("medical_be.Models.PatternMatch", b =>
+                {
+                    b.HasOne("medical_be.Models.User", "Patient")
+                        .WithMany("PatternMatches")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("medical_be.Models.MedicalPattern", "Pattern")
+                        .WithMany("Matches")
+                        .HasForeignKey("PatternId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("Pattern");
+                });
+
             modelBuilder.Entity("medical_be.Models.RolePermission", b =>
                 {
                     b.HasOne("medical_be.Models.Permission", "Permission")
@@ -982,6 +1778,16 @@ namespace medical_be.Migrations
                     b.Navigation("Permission");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("medical_be.Models.SingleNotification", b =>
+                {
+                    b.HasOne("medical_be.Models.NotificationCampaign", "Campaign")
+                        .WithMany("Notifications")
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Campaign");
                 });
 
             modelBuilder.Entity("medical_be.Models.UserRole", b =>
@@ -1016,6 +1822,10 @@ namespace medical_be.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("medical_be.Models.User", null)
+                        .WithMany("Vaccinations")
+                        .HasForeignKey("UserId");
+
                     b.Navigation("AdministeredBy");
 
                     b.Navigation("Patient");
@@ -1035,9 +1845,33 @@ namespace medical_be.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("medical_be.Models.User", null)
+                        .WithMany("PatientVisits")
+                        .HasForeignKey("UserId");
+
                     b.Navigation("Doctor");
 
                     b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("medical_be.Models.FileType", b =>
+                {
+                    b.Navigation("Files");
+                });
+
+            modelBuilder.Entity("medical_be.Models.MedicalPattern", b =>
+                {
+                    b.Navigation("Matches");
+                });
+
+            modelBuilder.Entity("medical_be.Models.NotificationCampaign", b =>
+                {
+                    b.Navigation("Notifications");
+                });
+
+            modelBuilder.Entity("medical_be.Models.PatternMatch", b =>
+                {
+                    b.Navigation("Alerts");
                 });
 
             modelBuilder.Entity("medical_be.Models.Permission", b =>
@@ -1056,23 +1890,43 @@ namespace medical_be.Migrations
                 {
                     b.Navigation("AdministeredVaccinations");
 
+                    b.Navigation("Allergies");
+
+                    b.Navigation("Diagnoses");
+
                     b.Navigation("DoctorAppointments");
+
+                    b.Navigation("DoctorDiagnoses");
 
                     b.Navigation("DoctorVisitRecords");
 
+                    b.Navigation("LabResults");
+
                     b.Navigation("MedicalRecords");
+
+                    b.Navigation("PatientAlerts");
 
                     b.Navigation("PatientAllergies");
 
                     b.Navigation("PatientAppointments");
 
+                    b.Navigation("PatientDiagnoses");
+
                     b.Navigation("PatientVaccinations");
 
                     b.Navigation("PatientVisitRecords");
 
+                    b.Navigation("PatientVisits");
+
+                    b.Navigation("PatternMatches");
+
+                    b.Navigation("ReadAlerts");
+
                     b.Navigation("RecordedAllergies");
 
                     b.Navigation("UserRoles");
+
+                    b.Navigation("Vaccinations");
                 });
 #pragma warning restore 612, 618
         }

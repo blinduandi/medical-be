@@ -7,6 +7,7 @@ using medical_be.DTOs;
 using medical_be.Services;
 using medical_be.Shared.Interfaces;
 using medical_be.Extensions;
+using medical_be.Controllers.Base;
 using AutoMapper;
 
 
@@ -15,7 +16,7 @@ namespace medical_be.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class DoctorController : ControllerBase
+    public class DoctorController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
@@ -52,6 +53,8 @@ namespace medical_be.Controllers
                     PhoneNumber = u.PhoneNumber ?? string.Empty,
                     IDNP = u.IDNP,
                     ClinicId = u.ClinicId,
+                    Specialty = u.Specialty,
+                    Experience = u.Experience,
                     TotalPatients = 0,
                     LastActivity = null,
                     DateOfBirth = u.DateOfBirth,
@@ -93,6 +96,8 @@ namespace medical_be.Controllers
                         PhoneNumber = u.PhoneNumber ?? string.Empty,
                         IDNP = u.IDNP,
                         ClinicId = u.ClinicId,
+                        Specialty = u.Specialty,
+                        Experience = u.Experience,
                         TotalPatients = 0,
                         LastActivity = null,
                         DateOfBirth = u.DateOfBirth,
@@ -163,6 +168,8 @@ namespace medical_be.Controllers
                     PhoneNumber = user.PhoneNumber,
                     IDNP = user.IDNP,
                     ClinicId = dto.ClinicId,
+                    Specialty = dto.Specialty,
+                    Experience = dto.Experience,
                     IsActive = user.IsActive,
                     TotalPatients = 0,
                     LastActivity = null
@@ -179,44 +186,64 @@ namespace medical_be.Controllers
         }
 
         // PUT: api/Doctor/{idnp}
-        [HttpPut("{idnp}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateDoctor(string idnp, [FromBody] DoctorUpdateDto dto)
+        [HttpPut("updateDoctor")]
+        [Authorize(Roles = "Admin,Doctor")]
+        public async Task<IActionResult> UpdateDoctor([FromBody] DoctorUpdateDto dto)
         {
-            var doctor = await _context.Users
-                .Where(u => u.IDNP == idnp && u.UserRoles.Any(r => r.Role.Name == "Doctor"))
-                .FirstOrDefaultAsync();
-
-            if (doctor == null)
-                return NotFound("Doctor not found.");
-
-            // Update only allowed fields
-            if (dto.PhoneNumber != null) doctor.PhoneNumber = dto.PhoneNumber;
-            if (dto.Address != null) doctor.Address = dto.Address;
-            if (dto.IsActive.HasValue) doctor.IsActive = dto.IsActive.Value;
-
-            await _context.SaveChangesAsync();
-
-            // Return updated doctor DTO
-            var doctorDto = new DoctorProfileDto
+            try
             {
-                Id = doctor.Id,
-                FirstName = doctor.FirstName,
-                LastName = doctor.LastName,
-                Email = doctor.Email ?? string.Empty,
-                PhoneNumber = doctor.PhoneNumber,
-                IDNP = doctor.IDNP,
-                ClinicId = doctor.ClinicId,
-                IsActive = doctor.IsActive,
-                TotalPatients = 0
-            };
+                // Get the authenticated user's ID from claims
+                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User ID not found in token.");
+                }
 
-            return Ok(doctorDto);
+                var doctor = await _context.Users
+                    .Where(u => u.Id == userId && u.UserRoles.Any(r => r.Role.Name == "Doctor"))
+                    .FirstOrDefaultAsync();
+
+                if (doctor == null)
+                    return NotFound("Doctor not found.");
+
+                // Update only allowed fields
+                if (dto.PhoneNumber != null) doctor.PhoneNumber = dto.PhoneNumber;
+                if (dto.Address != null) doctor.Address = dto.Address;
+                if (dto.IsActive.HasValue) doctor.IsActive = dto.IsActive.Value;
+                if (dto.ClinicId != null) doctor.ClinicId = dto.ClinicId;
+                if (dto.Specialty != null) doctor.Specialty = dto.Specialty;
+                if (dto.Experience != null) doctor.Experience = dto.Experience;
+
+                await _context.SaveChangesAsync();
+
+                // Return updated doctor DTO
+                var doctorDto = new DoctorProfileDto
+                {
+                    Id = doctor.Id,
+                    FirstName = doctor.FirstName,
+                    LastName = doctor.LastName,
+                    Email = doctor.Email ?? string.Empty,
+                    PhoneNumber = doctor.PhoneNumber,
+                    IDNP = doctor.IDNP,
+                    ClinicId = doctor.ClinicId,
+                    Specialty = doctor.Specialty,
+                    Experience = doctor.Experience,
+                    IsActive = doctor.IsActive,
+                    TotalPatients = 0
+                };
+
+                return Ok(doctorDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating doctor with userId: {UserId}", User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+                return StatusCode(500, new { message = "Internal server error", details = ex.Message });
+            }
         }
 
 
         // DELETE: api/Doctor/{idnp}
-        [HttpDelete("{idnp}")]
+        [HttpDelete("deleteDoctor")]
         public async Task<IActionResult> DeleteDoctor(string idnp)
         {
             var doctor = await _context.Users
@@ -443,6 +470,52 @@ namespace medical_be.Controllers
             {
                 _logger.LogError(ex, "Error retrieving patient details for doctor: {DoctorId}, Patient: {PatientId}", User.GetUserId(), patientId);
                 return StatusCode(500, new { message = "An error occurred while retrieving patient details" });
+            }
+        }
+
+                /// <summary>
+        /// Get doctor's dashboard data (includes profile and other details)
+        /// </summary>
+        [HttpGet("dashboard")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<IActionResult> GetDashboard()
+        {
+            try
+            {
+                var doctorId = User.GetUserId();
+
+                // Fetch profile data
+                var profile = await _context.Users
+                    .Where(u => u.Id == doctorId)
+                    .Select(u => new DoctorProfileDto
+                    {
+                        Id = u.Id,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email ?? string.Empty,
+                        PhoneNumber = u.PhoneNumber ?? string.Empty,
+                        IDNP = u.IDNP,
+                        DateOfBirth = u.DateOfBirth,
+                        Address = u.Address,
+                        IsActive = u.IsActive,
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (profile == null)
+                {
+                    return NotFoundResponse("Doctor not found");
+                }
+
+                // Return aggregated data
+                return SuccessResponse(new
+                {
+                    Profile = profile,
+                }, "Dashboard data retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving dashboard data for doctor: {DoctorId}", User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving the dashboard data");
             }
         }
     }

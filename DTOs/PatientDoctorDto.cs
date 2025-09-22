@@ -25,6 +25,8 @@ public class PatientDoctorDto
     public string DoctorEmail { get; set; } = string.Empty;
     public string? DoctorPhoneNumber { get; set; }
     public string? ClinicId { get; set; }
+    public string? Specialty { get; set; }
+    public string? Experience { get; set; }
     public DateTime AssignedDate { get; set; }
     public bool IsActive { get; set; }
     public string? Notes { get; set; }
@@ -85,6 +87,8 @@ public class AvailableDoctorDto
     public string Email { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
     public string? ClinicId { get; set; }
+    public string? Specialty { get; set; }
+    public string? Experience { get; set; }
     public string IDNP { get; set; } = string.Empty;
     public bool IsAlreadyAssigned { get; set; }
 }

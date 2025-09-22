@@ -449,6 +449,8 @@ namespace medical_be.Controllers
                         DoctorEmail = pd.Doctor.Email ?? "",
                         DoctorPhoneNumber = pd.Doctor.PhoneNumber,
                         ClinicId = pd.Doctor.ClinicId,
+                        Specialty = pd.Doctor.Specialty,
+                        Experience = pd.Doctor.Experience,
                         AssignedDate = pd.AssignedDate,
                         IsActive = pd.IsActive,
                         Notes = pd.Notes,
@@ -503,6 +505,8 @@ namespace medical_be.Controllers
                         Email = u.Email ?? "",
                         PhoneNumber = u.PhoneNumber,
                         ClinicId = u.ClinicId,
+                        Specialty = u.Specialty,
+                        Experience = u.Experience,
                         IDNP = u.IDNP,
                         IsAlreadyAssigned = assignedDoctorIds.Contains(u.Id)
                     })
@@ -585,6 +589,8 @@ namespace medical_be.Controllers
                     DoctorEmail = doctor.Email ?? "",
                     DoctorPhoneNumber = doctor.PhoneNumber,
                     ClinicId = doctor.ClinicId,
+                    Specialty = doctor.Specialty,
+                    Experience = doctor.Experience,
                     AssignedDate = patientDoctor.AssignedDate,
                     IsActive = patientDoctor.IsActive,
                     Notes = patientDoctor.Notes,

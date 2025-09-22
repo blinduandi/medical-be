@@ -39,7 +39,9 @@ public class MappingProfile : Profile
             .ForMember(d => d.DoctorName, opt => opt.MapFrom(s => s.Doctor.FirstName + " " + s.Doctor.LastName))
             .ForMember(d => d.DoctorEmail, opt => opt.MapFrom(s => s.Doctor.Email ?? ""))
             .ForMember(d => d.DoctorPhoneNumber, opt => opt.MapFrom(s => s.Doctor.PhoneNumber))
-            .ForMember(d => d.ClinicId, opt => opt.MapFrom(s => s.Doctor.ClinicId));
+            .ForMember(d => d.ClinicId, opt => opt.MapFrom(s => s.Doctor.ClinicId))
+            .ForMember(d => d.Specialty, opt => opt.MapFrom(s => s.Doctor.Specialty))
+            .ForMember(d => d.Experience, opt => opt.MapFrom(s => s.Doctor.Experience));
 
         // PatientDoctor -> DoctorPatientDto
         CreateMap<PatientDoctor, DoctorPatientDto>()
