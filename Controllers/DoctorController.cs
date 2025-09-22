@@ -53,7 +53,7 @@ namespace medical_be.Controllers
                     PhoneNumber = u.PhoneNumber ?? string.Empty,
                     IDNP = u.IDNP,
                     ClinicId = u.ClinicId,
-                    Specialty = u.Specialty,
+                    Specialty = u.Specialty.ToString(),
                     Experience = u.Experience,
                     TotalPatients = 0,
                     LastActivity = null,
@@ -96,7 +96,7 @@ namespace medical_be.Controllers
                         PhoneNumber = u.PhoneNumber ?? string.Empty,
                         IDNP = u.IDNP,
                         ClinicId = u.ClinicId,
-                        Specialty = u.Specialty,
+                        Specialty = u.Specialty.ToString(),
                         Experience = u.Experience,
                         TotalPatients = 0,
                         LastActivity = null,
@@ -168,7 +168,7 @@ namespace medical_be.Controllers
                     PhoneNumber = user.PhoneNumber,
                     IDNP = user.IDNP,
                     ClinicId = dto.ClinicId,
-                    Specialty = dto.Specialty,
+                    Specialty = dto.Specialty.ToString(),
                     Experience = dto.Experience,
                     IsActive = user.IsActive,
                     TotalPatients = 0,
@@ -211,7 +211,7 @@ namespace medical_be.Controllers
                 if (dto.Address != null) doctor.Address = dto.Address;
                 if (dto.IsActive.HasValue) doctor.IsActive = dto.IsActive.Value;
                 if (dto.ClinicId != null) doctor.ClinicId = dto.ClinicId;
-                if (dto.Specialty != null) doctor.Specialty = dto.Specialty;
+                if (dto.Specialty.HasValue) doctor.Specialty = dto.Specialty.Value;
                 if (dto.Experience != null) doctor.Experience = dto.Experience;
 
                 await _context.SaveChangesAsync();
@@ -226,7 +226,7 @@ namespace medical_be.Controllers
                     PhoneNumber = doctor.PhoneNumber,
                     IDNP = doctor.IDNP,
                     ClinicId = doctor.ClinicId,
-                    Specialty = doctor.Specialty,
+                    Specialty = doctor.Specialty.ToString(),
                     Experience = doctor.Experience,
                     IsActive = doctor.IsActive,
                     TotalPatients = 0
