@@ -134,8 +134,9 @@ namespace medical_be.Controllers
                                 Email = userEntity.Email ?? string.Empty,
                                 PhoneNumber = userEntity.PhoneNumber ?? string.Empty,
                                 IsActive = userEntity.IsActive,
-                                Specialty = userEntity.Specialty, 
-                                Experience = userEntity.Experience 
+                                Specialty = userEntity.Specialty.ToString(),
+                                Experience = userEntity.Experience,
+                                ClinicId = userEntity.ClinicId
                             },
                             Roles = userRoles
                         });
