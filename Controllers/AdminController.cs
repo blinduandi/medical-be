@@ -107,48 +107,61 @@ namespace medical_be.Controllers
                 }
 
                 var totalUsers = await query.CountAsync();
+
                 var users = await query
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .Select(u => new PatientProfileDto
-                    {
-                        Id = u.Id,
-                        FirstName = u.FirstName,
-                        LastName = u.LastName,
-                        Email = u.Email ?? string.Empty,
-                        PhoneNumber = u.PhoneNumber ?? string.Empty,
-                        IDNP = u.IDNP,
-                        BloodType = u.BloodType,
-                        DateOfBirth = u.DateOfBirth,
-                        Address = u.Address,
-                        IsActive = u.IsActive
-                    })
                     .ToListAsync();
 
-                // Get roles for each user
                 var usersWithRoles = new List<object>();
-                foreach (var user in users)
+
+                foreach (var userEntity in users)
                 {
-                    var userEntity = await _userManager.FindByIdAsync(user.Id);
                     var userRoles = userEntity != null
                         ? await _userManager.GetRolesAsync(userEntity)
                         : new List<string>();
 
-                    usersWithRoles.Add(new
+                    if (userRoles.Contains("Doctor"))
                     {
-                        User = user,
-                        Roles = userRoles
-                    });
+                        // Map to DoctorProfileDto
+                        usersWithRoles.Add(new
+                        {
+                            User = new DoctorProfileDto
+                            {
+                                Id = userEntity.Id,
+                                FirstName = userEntity.FirstName,
+                                LastName = userEntity.LastName,
+                                Email = userEntity.Email ?? string.Empty,
+                                PhoneNumber = userEntity.PhoneNumber ?? string.Empty,
+                                IsActive = userEntity.IsActive,
+                                Specialty = userEntity.Specialty, 
+                                Experience = userEntity.Experience 
+                            },
+                            Roles = userRoles
+                        });
+                    }
+                    else
+                    {
+                        // Map to PatientProfileDto
+                        usersWithRoles.Add(new
+                        {
+                            User = new PatientProfileDto
+                            {
+                                Id = userEntity.Id,
+                                FirstName = userEntity.FirstName,
+                                LastName = userEntity.LastName,
+                                Email = userEntity.Email ?? string.Empty,
+                                PhoneNumber = userEntity.PhoneNumber ?? string.Empty,
+                                IDNP = userEntity.IDNP,
+                                BloodType = userEntity.BloodType,
+                                DateOfBirth = userEntity.DateOfBirth,
+                                Address = userEntity.Address,
+                                IsActive = userEntity.IsActive
+                            },
+                            Roles = userRoles
+                        });
+                    }
                 }
-
-                var result = new
-                {
-                    Users = usersWithRoles,
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalUsers = totalUsers,
-                    TotalPages = (int)Math.Ceiling(totalUsers / (double)pageSize)
-                };
 
                 return PaginatedResponse(usersWithRoles, page, pageSize, totalUsers, "Users retrieved successfully");
             }
@@ -158,6 +171,7 @@ namespace medical_be.Controllers
                 return InternalServerErrorResponse("An error occurred while retrieving users");
             }
         }
+
 
         /// <summary>
         /// Create new user
