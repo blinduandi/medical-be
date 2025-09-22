@@ -13,7 +13,7 @@ namespace medical_be.DTOs
         public DateTime DateOfBirth { get; set; }
         public string Address { get; set; } = null!;
         public string ClinicId { get; set; } = null!;
-        public string Specialty { get; set; } = null!;
+        public DoctorSpecialty Specialty { get; set; } = DoctorSpecialty.GeneralPractice;
         public string Experience { get; set; } = null!;
     }
 
@@ -22,7 +22,7 @@ namespace medical_be.DTOs
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
         public string? ClinicId { get; set; }
-        public string? Specialty { get; set; }
+        public DoctorSpecialty? Specialty { get; set; }
         public string? Experience { get; set; }
         public bool? IsActive { get; set; }
     }

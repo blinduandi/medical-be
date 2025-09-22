@@ -137,6 +137,11 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
         builder.Entity<User>(entity =>
         {
             entity.HasIndex(u => u.Email).IsUnique();
+            entity.Property(u => u.Specialty)
+                .HasConversion(
+                    v => v.ToString(),
+                    v => (medical_be.Models.DoctorSpecialty)Enum.Parse(typeof(medical_be.Models.DoctorSpecialty), v)
+                );
         });
 
         // Configure VisitRecord relationships

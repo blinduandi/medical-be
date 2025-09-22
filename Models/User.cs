@@ -33,8 +33,8 @@ public class User : IdentityUser
     
     [MaxLength(100)]
     public string? ClinicId { get; set; } // For doctors
-    [MaxLength(100)]
-    public string? Specialty { get; set; } // Doctor's specialty
+    [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "nvarchar(100)")]
+    public DoctorSpecialty Specialty { get; set; } = DoctorSpecialty.GeneralPractice;
 
     [MaxLength(100)]
     public string? Experience { get; set; } // Doctor's experience (as string)

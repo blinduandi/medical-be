@@ -127,7 +127,7 @@ public class DoctorSearchDto
     public string? Name { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public string? ClinicId { get; set; }
-    public string? Specialty { get; set; }
+    public medical_be.Models.DoctorSpecialty? Specialty { get; set; }
     public string? Experience { get; set; }
     public int TotalPatients { get; set; }
     public DateTime? LastActivity { get; set; }

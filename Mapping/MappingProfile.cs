@@ -34,13 +34,13 @@ public class MappingProfile : Profile
             .ForMember(d => d.PatientName, opt => opt.Ignore())
             .ForMember(d => d.DoctorName, opt => opt.Ignore());
 
-        // PatientDoctor -> PatientDoctorDto
+        // PatientDoctor -> PatientDoctorDto (show specialty as string)
         CreateMap<PatientDoctor, PatientDoctorDto>()
             .ForMember(d => d.DoctorName, opt => opt.MapFrom(s => s.Doctor.FirstName + " " + s.Doctor.LastName))
             .ForMember(d => d.DoctorEmail, opt => opt.MapFrom(s => s.Doctor.Email ?? ""))
             .ForMember(d => d.DoctorPhoneNumber, opt => opt.MapFrom(s => s.Doctor.PhoneNumber))
             .ForMember(d => d.ClinicId, opt => opt.MapFrom(s => s.Doctor.ClinicId))
-            .ForMember(d => d.Specialty, opt => opt.MapFrom(s => s.Doctor.Specialty))
+            .ForMember(d => d.Specialty, opt => opt.MapFrom(s => s.Doctor.Specialty.ToString()))
             .ForMember(d => d.Experience, opt => opt.MapFrom(s => s.Doctor.Experience));
 
         // PatientDoctor -> DoctorPatientDto
@@ -54,10 +54,11 @@ public class MappingProfile : Profile
             .ForMember(d => d.LastVisit, opt => opt.Ignore())
             .ForMember(d => d.TotalVisits, opt => opt.Ignore());
 
-        // User -> AvailableDoctorDto (for doctor selection)
+        // User -> AvailableDoctorDto (for doctor selection, show specialty as string)
         CreateMap<User, AvailableDoctorDto>()
             .ForMember(d => d.Name, opt => opt.MapFrom(s => s.FirstName + " " + s.LastName))
             .ForMember(d => d.Email, opt => opt.MapFrom(s => s.Email ?? ""))
+            .ForMember(d => d.Specialty, opt => opt.MapFrom(s => s.Specialty.ToString()))
             .ForMember(d => d.IsAlreadyAssigned, opt => opt.Ignore());
     }
 }
