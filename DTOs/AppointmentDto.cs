@@ -52,6 +52,7 @@ public class AppointmentDto
     public string DoctorId { get; set; } = string.Empty;
     public string PatientName { get; set; } = string.Empty;
     public string DoctorName { get; set; } = string.Empty;
+    public string Specialty { get; set; } = string.Empty;
     public DateTime AppointmentDate { get; set; }
     public TimeSpan Duration { get; set; }
     public AppointmentStatus Status { get; set; }
