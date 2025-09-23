@@ -208,8 +208,8 @@ public class AppointmentController : BaseApiController
                     { "doctor.Specialty", doctor.Specialty.ToString() },
                     { "AppointmentDate", appt.AppointmentDate.ToString("f") },
                     { "Duration", appt.Duration.TotalMinutes.ToString() },
-                    { "Reason", appt.Reason },
-                    { "Notes", appt.Notes }
+                    { "Reason", appt.Reason ?? "N/A" },
+                    { "Notes", appt.Notes ?? "N/A" }
                 };
 
                 var body = await _emailTemplateService.GetTemplateAsync("AppointmentConfEmail.html", placeholders);

@@ -76,6 +76,10 @@ public class User : IdentityUser
     public virtual ICollection<Allergy> Allergies => PatientAllergies;
     public virtual ICollection<Vaccination> Vaccinations => PatientVaccinations;
     public virtual ICollection<Diagnosis> Diagnoses => PatientDiagnoses;
+
+    // Ratings Navigation Properties
+    public ICollection<Rating> DoctorRatings { get; set; } = new List<Rating>();
+    public ICollection<Rating> PatientRatings { get; set; } = new List<Rating>();
 }
 
 public enum Gender

@@ -18,6 +18,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<Appointment> Appointments { get; set; }
+    public DbSet<Rating> Ratings { get; set; }
     public DbSet<MedicalRecord> MedicalRecords { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<NotificationLog> NotificationLogs { get; set; }
@@ -107,6 +108,24 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(a => new { a.DoctorId, a.AppointmentDate });
+        });
+
+        // Configure Rating
+        builder.Entity<Rating>(entity =>
+        {
+            entity.HasKey(r => r.RatingId);
+
+            entity.HasOne(r => r.Doctor)
+                .WithMany(u => u.DoctorRatings)
+                .HasForeignKey(r => r.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.Patient)
+                .WithMany(u => u.PatientRatings)
+                .HasForeignKey(r => r.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(r => new { r.DoctorId, r.PatientId }).IsUnique();
         });
 
         // Configure MedicalRecord

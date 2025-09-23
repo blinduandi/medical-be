@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using medical_be.Data;
 
@@ -11,9 +12,11 @@ using medical_be.Data;
 namespace medical_be.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250923092758_AddRatingTable")]
+    partial class AddRatingTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1084,11 +1087,11 @@ namespace medical_be.Migrations
 
                     b.Property<string>("DoctorId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PatientId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RatingCommentary")
                         .HasMaxLength(1000)
@@ -1098,11 +1101,6 @@ namespace medical_be.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("RatingId");
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("DoctorId", "PatientId")
-                        .IsUnique();
 
                     b.ToTable("Ratings");
                 });
@@ -1794,25 +1792,6 @@ namespace medical_be.Migrations
                     b.Navigation("Pattern");
                 });
 
-            modelBuilder.Entity("medical_be.Models.Rating", b =>
-                {
-                    b.HasOne("medical_be.Models.User", "Doctor")
-                        .WithMany("DoctorRatings")
-                        .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("medical_be.Models.User", "Patient")
-                        .WithMany("PatientRatings")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Doctor");
-
-                    b.Navigation("Patient");
-                });
-
             modelBuilder.Entity("medical_be.Models.RolePermission", b =>
                 {
                     b.HasOne("medical_be.Models.Permission", "Permission")
@@ -1950,8 +1929,6 @@ namespace medical_be.Migrations
 
                     b.Navigation("DoctorDiagnoses");
 
-                    b.Navigation("DoctorRatings");
-
                     b.Navigation("DoctorVisitRecords");
 
                     b.Navigation("LabResults");
@@ -1965,8 +1942,6 @@ namespace medical_be.Migrations
                     b.Navigation("PatientAppointments");
 
                     b.Navigation("PatientDiagnoses");
-
-                    b.Navigation("PatientRatings");
 
                     b.Navigation("PatientVaccinations");
 
