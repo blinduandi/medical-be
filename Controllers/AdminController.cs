@@ -28,6 +28,7 @@ namespace medical_be.Controllers
         private readonly IPatternDetectionService _patternDetectionService;
         private readonly IDataSeedingService _dataSeedingService;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IAuthService _authService;
 
         public AdminController(
             ApplicationDbContext context,
@@ -39,7 +40,8 @@ namespace medical_be.Controllers
             INotificationService notificationService,
             IPatternDetectionService patternDetectionService,
             IDataSeedingService dataSeedingService,
-            IServiceScopeFactory scopeFactory)
+            IServiceScopeFactory scopeFactory,
+            IAuthService authService)
         {
             _context = context;
             _userManager = userManager;
@@ -51,6 +53,7 @@ namespace medical_be.Controllers
             _patternDetectionService = patternDetectionService;
             _dataSeedingService = dataSeedingService;
             _scopeFactory = scopeFactory;
+            _authService = authService;
         }
 
         /// <summary>
@@ -136,7 +139,7 @@ namespace medical_be.Controllers
                                 IsActive = userEntity.IsActive,
                                 Specialty = userEntity.Specialty.ToString(),
                                 Experience = userEntity.Experience,
-                                ClinicId = userEntity.ClinicId
+                                ClinicId = userEntity.ClinicId ?? "N/A"
                             },
                             Roles = userRoles
                         });
@@ -1198,7 +1201,7 @@ namespace medical_be.Controllers
                 return InternalServerErrorResponse("An error occurred while retrieving statistics");
             }
         }
-        
+
         [HttpGet("dashboard")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetDashboard()
@@ -1228,8 +1231,162 @@ namespace medical_be.Controllers
             }
         }
 
+        [HttpPost("toggle-status/{id}")]
+        public async Task<IActionResult> ToggleUserStatus(string id)
+        {
+            var user = await _context.Users.FindAsync(id);
+
+            if (user == null)
+                return NotFound();
+
+            // Flip status
+            user.IsActive = !user.IsActive;
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Status updated", isActive = user.IsActive });
+        }
 
         #endregion
+
+        [HttpPost("CreateDoctor")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateDoctor([FromBody] DoctorCreateDto dto)
+        {
+            try
+            {
+                // Map DoctorCreateDto to RegisterDto
+                var doctorRegisterDto = new RegisterDto
+                {
+                    FirstName = dto.FirstName,
+                    LastName = dto.LastName,
+                    Gender = dto.Gender,
+                    Email = dto.Email,
+                    PhoneNumber = dto.PhoneNumber,
+                    DateOfBirth = dto.DateOfBirth,
+                    Address = dto.Address,
+                    IDNP = dto.IDNP,
+                    UserRole = UserRegistrationType.Doctor,
+                    Password = "DefaultPassword123!", // you can generate a temporary password
+                    ConfirmPassword = "DefaultPassword123!"
+                };
+
+                // Use the AuthService to register the doctor
+                var result = await _authService.RegisterAsync(doctorRegisterDto);
+
+                if (!result.Success)
+                {
+                    _logger.LogWarning("Failed to create doctor: {Email}, Errors: {Errors}", dto.Email, string.Join(", ", result.Errors));
+                    return BadRequest(new { message = result.Message, errors = result.Errors });
+                }
+
+                var user = result.AuthResponse!.User;
+
+                // Map the returned user to DoctorProfileDto
+                var doctorDto = new DoctorProfileDto
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Gender = user.Gender,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    IDNP = user.IDNP,
+                    ClinicId = dto.ClinicId,
+                    Specialty = dto.Specialty.ToString(),
+                    Experience = dto.Experience,
+                    IsActive = user.IsActive,
+                    TotalPatients = 0,
+                    LastActivity = null
+                };
+
+                _logger.LogInformation("Doctor created successfully: {Email}", user.Email);
+                return Ok(doctorDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating doctor: {Email}", dto.Email);
+                return StatusCode(500, new { message = "Internal server error", details = ex.Message });
+            }
+        }
+
+        [HttpPut("updateDoctor/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateDoctor(string id, [FromBody] DoctorUpdateDto dto)
+        {
+        try{
+            var doctor = await _context.Users
+                .Where(u => u.Id == id && u.UserRoles.Any(r => r.Role.Name == "Doctor"))
+                .FirstOrDefaultAsync();
+
+            if (doctor == null)
+                return NotFound("Doctor not found.");
+
+                // Update only allowed fields
+                if (dto.PhoneNumber != null) doctor.PhoneNumber = dto.PhoneNumber;
+                if (dto.Address != null) doctor.Address = dto.Address;
+                if (dto.IsActive.HasValue) doctor.IsActive = dto.IsActive.Value;
+                if (dto.ClinicId != null) doctor.ClinicId = dto.ClinicId;
+                if (dto.Specialty.HasValue) doctor.Specialty = dto.Specialty.Value;
+                if (dto.Experience != null) doctor.Experience = dto.Experience;
+
+                await _context.SaveChangesAsync();
+
+                // Return updated doctor DTO
+                var doctorDto = new DoctorProfileDto
+                {
+                    Id = doctor.Id,
+                    FirstName = doctor.FirstName,
+                    LastName = doctor.LastName,
+                    Email = doctor.Email ?? string.Empty,
+                    PhoneNumber = doctor.PhoneNumber,
+                    IDNP = doctor.IDNP,
+                    ClinicId = doctor.ClinicId,
+                    Specialty = doctor.Specialty.ToString(),
+                    Experience = doctor.Experience,
+                    IsActive = doctor.IsActive,
+                    TotalPatients = 0
+                };
+
+                return Ok(doctorDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating doctor with userId: {UserId}", User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+                return StatusCode(500, new { message = "Internal server error", details = ex.Message });
+            }
+        }
+
+        [HttpDelete("deleteDoctor/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteDoctor(string id)
+        {
+            try
+            {
+                var doctor = await _context.Users
+                    .Include(u => u.DoctorAppointments) // include dependent entities
+                    .Where(u => u.Id == id && u.UserRoles.Any(r => r.Role.Name == "Doctor"))
+                    .FirstOrDefaultAsync();
+
+                if (doctor == null)
+                    return NotFound("Doctor not found.");
+
+                if (doctor.DoctorAppointments.Any())
+                    return BadRequest("Cannot delete doctor with existing appointments.");
+
+                _context.Users.Remove(doctor);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Doctor deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting doctor with id: {DoctorId}", id);
+                return StatusCode(500, new { message = "Internal server error", details = ex.Message });
+            }
+        }
+
 
     }
 }
