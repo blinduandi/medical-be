@@ -362,7 +362,7 @@ public class AppointmentController : BaseApiController
     /// Cancel an appointment (soft cancel by setting status)
     /// </summary>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Doctor,Admin")]
+    [Authorize(Roles = "Doctor,Admin, Patient")]
     public async Task<IActionResult> Cancel(int id)
     {
         try
