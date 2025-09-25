@@ -20,17 +20,20 @@ namespace medical_be.Controllers
         private readonly IMapper _mapper;
         private readonly IAuditService _auditService;
         private readonly ILogger<PatientController> _logger;
+        private readonly IPatientAccessLogService _patientAccessLogService;
 
         public PatientController(
             ApplicationDbContext context,
             IMapper mapper,
             IAuditService auditService,
-            ILogger<PatientController> logger)
+            ILogger<PatientController> logger,
+            IPatientAccessLogService patientAccessLogService)
         {
             _context = context;
             _mapper = mapper;
             _auditService = auditService;
             _logger = logger;
+            _patientAccessLogService = patientAccessLogService;
         }
 
         /// <summary>
@@ -659,6 +662,68 @@ namespace medical_be.Controllers
             {
                 _logger.LogError(ex, "Error removing doctor from patient: {PatientId}, Doctor: {DoctorId}", User.GetUserId(), dto.DoctorId);
                 return InternalServerErrorResponse("An error occurred while removing the doctor");
+            }
+        }
+
+        /// <summary>
+        /// Get patient's access log summary (who accessed their data and when)
+        /// </summary>
+        [HttpGet("access-log/summary")]
+        [Authorize(Roles = "Patient,Admin")]
+        public async Task<IActionResult> GetMyAccessLogSummary()
+        {
+            try
+            {
+                var patientId = User.GetUserId();
+                var summary = await _patientAccessLogService.GetPatientAccessSummaryAsync(patientId);
+                
+                return SuccessResponse(summary, "Access log summary retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving access log summary for patient: {PatientId}", User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving access log summary");
+            }
+        }
+
+        /// <summary>
+        /// Get detailed access logs for the patient
+        /// </summary>
+        [HttpGet("access-log")]
+        [Authorize(Roles = "Patient,Admin")]
+        public async Task<IActionResult> GetMyAccessLogs([FromQuery] PatientAccessLogQueryDto query)
+        {
+            try
+            {
+                var patientId = User.GetUserId();
+                
+                // Ensure the query is for the current patient only (unless admin)
+                if (!User.IsInRole("Admin"))
+                {
+                    query.PatientId = patientId;
+                }
+                else if (string.IsNullOrEmpty(query.PatientId))
+                {
+                    query.PatientId = patientId;
+                }
+
+                var accessLogs = await _patientAccessLogService.GetPatientAccessLogsAsync(query);
+                
+                return SuccessResponse(new
+                {
+                    accessLogs = accessLogs,
+                    pagination = new
+                    {
+                        currentPage = query.Page,
+                        pageSize = query.PageSize,
+                        hasMore = accessLogs.Count == query.PageSize
+                    }
+                }, "Access logs retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving access logs for patient: {PatientId}", User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving access logs");
             }
         }
     }

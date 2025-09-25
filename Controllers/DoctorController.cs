@@ -23,19 +23,22 @@ namespace medical_be.Controllers
         private readonly IAuditService _auditService;
         private readonly ILogger<DoctorController> _logger;
         private readonly IAuthService _authService;
+        private readonly IPatientAccessLogService _patientAccessLogService;
 
         public DoctorController(
             ApplicationDbContext context,
             IMapper mapper,
             IAuditService auditService,
             ILogger<DoctorController> logger,
-            IAuthService authService)
+            IAuthService authService,
+            IPatientAccessLogService patientAccessLogService)
         {
             _context = context;
             _mapper = mapper;
             _auditService = auditService;
             _logger = logger;
             _authService = authService;
+            _patientAccessLogService = patientAccessLogService;
         }
 
         // GET: api/doctors
@@ -433,6 +436,16 @@ namespace medical_be.Controllers
                 {
                     return NotFound(new { message = "Patient not found or not assigned to this doctor" });
                 }
+
+                // Log patient access
+                await _patientAccessLogService.LogPatientAccessAsync(
+                    doctorId: userId,
+                    patientId: patientId,
+                    accessType: "ViewPatientDetails",
+                    accessReason: "Doctor viewed patient details page",
+                    ipAddress: Request.GetClientIpAddress(),
+                    userAgent: Request.Headers["User-Agent"].ToString()
+                );
 
                 // Get patient's detailed information
                 var patientDetails = new DoctorPatientDto
