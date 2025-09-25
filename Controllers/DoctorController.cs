@@ -9,6 +9,7 @@ using medical_be.Shared.Interfaces;
 using medical_be.Extensions;
 using medical_be.Controllers.Base;
 using AutoMapper;
+using System.ComponentModel.DataAnnotations;
 
 
 namespace medical_be.Controllers
@@ -122,7 +123,7 @@ namespace medical_be.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
-        
+
 
         // POST: api/Doctor
         [HttpPost("CreateDoctor")]
@@ -268,7 +269,7 @@ namespace medical_be.Controllers
             try
             {
                 var userId = User.GetUserId();
-                
+
                 var query = _context.PatientDoctors
                     .Where(pd => pd.DoctorId == userId && pd.IsActive)
                     .Include(pd => pd.Patient);
@@ -338,7 +339,7 @@ namespace medical_be.Controllers
             {
                 var userId = User.GetUserId();
 
-                if (string.IsNullOrWhiteSpace(searchDto.IDNP) && 
+                if (string.IsNullOrWhiteSpace(searchDto.IDNP) &&
                     string.IsNullOrWhiteSpace(searchDto.Name))
                 {
                     return BadRequest(new { message = "At least one search parameter is required" });
@@ -357,8 +358,8 @@ namespace medical_be.Controllers
 
                 if (!string.IsNullOrWhiteSpace(searchDto.Name))
                 {
-                    query = query.Where(pd => 
-                        pd.Patient.FirstName.Contains(searchDto.Name) || 
+                    query = query.Where(pd =>
+                        pd.Patient.FirstName.Contains(searchDto.Name) ||
                         pd.Patient.LastName.Contains(searchDto.Name));
                 }
 
@@ -390,11 +391,11 @@ namespace medical_be.Controllers
 
                 // Audit log
                 await _auditService.LogAuditAsync(
-                    userId, 
-                    "DoctorPatientSearch", 
-                    $"Searched patients with criteria: IDNP={searchDto.IDNP}, Name={searchDto.Name}", 
-                    "PatientDoctor", 
-                    null, 
+                    userId,
+                    "DoctorPatientSearch",
+                    $"Searched patients with criteria: IDNP={searchDto.IDNP}, Name={searchDto.Name}",
+                    "PatientDoctor",
+                    null,
                     Request.GetClientIpAddress());
 
                 return Ok(new
@@ -473,7 +474,7 @@ namespace medical_be.Controllers
             }
         }
 
-                /// <summary>
+        /// <summary>
         /// Get doctor's dashboard data (includes profile and other details)
         /// </summary>
         [HttpGet("dashboard")]
@@ -518,5 +519,51 @@ namespace medical_be.Controllers
                 return InternalServerErrorResponse("An error occurred while retrieving the dashboard data");
             }
         }
-    }
+        
+        [HttpGet("available-slots")]
+        public async Task<IActionResult> GetDoctorAvailableSlots([FromQuery][Required] string doctorId, [FromQuery][Required] DateTime day)
+        {
+            try
+            {
+                // Define working hours (can come from DB if stored per doctor)
+                var workStart = day.Date.AddHours(9);   // 9:00 AM
+                var workEnd = day.Date.AddHours(17);  // 5:00 PM
+                var slotDuration = TimeSpan.FromMinutes(30);
+
+                // Get doctor's appointments for the day
+                var doctorAppointments = await _context.Appointments
+                    .Where(a => a.DoctorId == doctorId &&
+                                a.Status != AppointmentStatus.Cancelled &&
+                                a.Status != AppointmentStatus.Completed &&
+                                a.AppointmentDate.Date == day.Date)
+                    .ToListAsync();
+
+                var availableSlots = new List<DateTime>();
+
+                // Generate time slots
+                for (var time = workStart; time < workEnd; time += slotDuration)
+                {
+                    var start = time;
+                    var end = time + slotDuration;
+
+                    // Check overlap (same as your existing check)
+                    var overlaps = doctorAppointments.Any(a =>
+                        a.AppointmentDate < end &&
+                        a.AppointmentDate + a.Duration > start
+                    );
+
+                    if (!overlaps)
+                        availableSlots.Add(start);
+                }
+
+                return SuccessResponse(availableSlots);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available slots for doctor");
+                return InternalServerErrorResponse("Failed to retrieve available slots");
+            }
+        }
+
+            }
 }
