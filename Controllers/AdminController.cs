@@ -29,6 +29,7 @@ namespace medical_be.Controllers
         private readonly IDataSeedingService _dataSeedingService;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IAuthService _authService;
+        private readonly IPatientAccessLogService _patientAccessLogService;
 
         public AdminController(
             ApplicationDbContext context,
@@ -41,7 +42,8 @@ namespace medical_be.Controllers
             IPatternDetectionService patternDetectionService,
             IDataSeedingService dataSeedingService,
             IServiceScopeFactory scopeFactory,
-            IAuthService authService)
+            IAuthService authService,
+            IPatientAccessLogService patientAccessLogService)
         {
             _context = context;
             _userManager = userManager;
@@ -54,6 +56,7 @@ namespace medical_be.Controllers
             _dataSeedingService = dataSeedingService;
             _scopeFactory = scopeFactory;
             _authService = authService;
+            _patientAccessLogService = patientAccessLogService;
         }
 
         /// <summary>
@@ -1572,6 +1575,182 @@ namespace medical_be.Controllers
             }
         }
 
+        /// <summary>
+        /// Get all patient access logs with filtering and pagination
+        /// </summary>
+        [HttpGet("patient-access-logs")]
+        public async Task<IActionResult> GetPatientAccessLogs([FromQuery] PatientAccessLogQueryDto query)
+        {
+            try
+            {
+                var accessLogs = await _patientAccessLogService.GetPatientAccessLogsAsync(query);
 
+                var totalCount = await _context.PatientAccessLogs
+                    .Where(pal => 
+                        (string.IsNullOrEmpty(query.PatientId) || pal.PatientId == query.PatientId) &&
+                        (string.IsNullOrEmpty(query.DoctorId) || pal.DoctorId == query.DoctorId) &&
+                        (!query.FromDate.HasValue || pal.AccessedAt >= query.FromDate.Value) &&
+                        (!query.ToDate.HasValue || pal.AccessedAt <= query.ToDate.Value) &&
+                        (string.IsNullOrEmpty(query.AccessType) || pal.AccessType == query.AccessType))
+                    .CountAsync();
+
+                return SuccessResponse(new
+                {
+                    accessLogs = accessLogs,
+                    pagination = new
+                    {
+                        currentPage = query.Page,
+                        pageSize = query.PageSize,
+                        totalItems = totalCount,
+                        totalPages = (int)Math.Ceiling((double)totalCount / query.PageSize)
+                    }
+                }, "Patient access logs retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving patient access logs");
+                return InternalServerErrorResponse("An error occurred while retrieving patient access logs");
+            }
+        }
+
+        /// <summary>
+        /// Get access summary for a specific patient
+        /// </summary>
+        [HttpGet("patient-access-logs/{patientId}/summary")]
+        public async Task<IActionResult> GetPatientAccessSummary(string patientId)
+        {
+            try
+            {
+                // Verify patient exists
+                var patient = await _context.Users
+                    .Where(u => u.Id == patientId && u.UserRoles.Any(r => r.Role.Name == "Patient"))
+                    .FirstOrDefaultAsync();
+
+                if (patient == null)
+                {
+                    return NotFoundResponse("Patient not found");
+                }
+
+                var summary = await _patientAccessLogService.GetPatientAccessSummaryAsync(patientId);
+                
+                return SuccessResponse(new
+                {
+                    patientId = patientId,
+                    patientName = patient.FirstName + " " + patient.LastName,
+                    summary = summary
+                }, "Patient access summary retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving patient access summary for patient {PatientId}", patientId);
+                return InternalServerErrorResponse("An error occurred while retrieving patient access summary");
+            }
+        }
+
+        /// <summary>
+        /// Get doctor's access history (what patients they've accessed)
+        /// </summary>
+        [HttpGet("doctor-access-history/{doctorId}")]
+        public async Task<IActionResult> GetDoctorAccessHistory(string doctorId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                // Verify doctor exists
+                var doctor = await _context.Users
+                    .Where(u => u.Id == doctorId && u.UserRoles.Any(r => r.Role.Name == "Doctor"))
+                    .FirstOrDefaultAsync();
+
+                if (doctor == null)
+                {
+                    return NotFoundResponse("Doctor not found");
+                }
+
+                var accessHistory = await _patientAccessLogService.GetDoctorAccessHistoryAsync(doctorId, page, pageSize);
+                
+                var totalCount = await _context.PatientAccessLogs
+                    .CountAsync(pal => pal.DoctorId == doctorId);
+
+                return SuccessResponse(new
+                {
+                    doctorId = doctorId,
+                    doctorName = doctor.FirstName + " " + doctor.LastName,
+                    accessHistory = accessHistory,
+                    pagination = new
+                    {
+                        currentPage = page,
+                        pageSize = pageSize,
+                        totalItems = totalCount,
+                        totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                    }
+                }, "Doctor access history retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving doctor access history for doctor {DoctorId}", doctorId);
+                return InternalServerErrorResponse("An error occurred while retrieving doctor access history");
+            }
+        }
+
+        /// <summary>
+        /// Get access log statistics
+        /// </summary>
+        [HttpGet("patient-access-logs/statistics")]
+        public async Task<IActionResult> GetAccessLogStatistics()
+        {
+            try
+            {
+                var today = DateTime.Today;
+                var thisWeek = today.AddDays(-7);
+                var thisMonth = today.AddDays(-30);
+
+                var totalAccesses = await _context.PatientAccessLogs.CountAsync();
+                var todayAccesses = await _context.PatientAccessLogs
+                    .CountAsync(pal => pal.AccessedAt >= today);
+                var weekAccesses = await _context.PatientAccessLogs
+                    .CountAsync(pal => pal.AccessedAt >= thisWeek);
+                var monthAccesses = await _context.PatientAccessLogs
+                    .CountAsync(pal => pal.AccessedAt >= thisMonth);
+
+                var topDoctorsByAccess = await _context.PatientAccessLogs
+                    .Include(pal => pal.Doctor)
+                    .Where(pal => pal.AccessedAt >= thisMonth)
+                    .GroupBy(pal => new { pal.DoctorId, pal.Doctor.FirstName, pal.Doctor.LastName })
+                    .Select(g => new
+                    {
+                        DoctorId = g.Key.DoctorId,
+                        DoctorName = g.Key.FirstName + " " + g.Key.LastName,
+                        AccessCount = g.Count()
+                    })
+                    .OrderByDescending(x => x.AccessCount)
+                    .Take(10)
+                    .ToListAsync();
+
+                var accessTypeStats = await _context.PatientAccessLogs
+                    .Where(pal => pal.AccessedAt >= thisMonth)
+                    .GroupBy(pal => pal.AccessType)
+                    .Select(g => new
+                    {
+                        AccessType = g.Key,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync();
+
+                return SuccessResponse(new
+                {
+                    TotalAccesses = totalAccesses,
+                    TodayAccesses = todayAccesses,
+                    WeekAccesses = weekAccesses,
+                    MonthAccesses = monthAccesses,
+                    TopDoctorsByAccess = topDoctorsByAccess,
+                    AccessTypeStatistics = accessTypeStats
+                }, "Access log statistics retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving access log statistics");
+                return InternalServerErrorResponse("An error occurred while retrieving access log statistics");
+            }
+        }
     }
 }

@@ -60,5 +60,10 @@ public class MappingProfile : Profile
             .ForMember(d => d.Email, opt => opt.MapFrom(s => s.Email ?? ""))
             .ForMember(d => d.Specialty, opt => opt.MapFrom(s => s.Specialty.ToString()))
             .ForMember(d => d.IsAlreadyAssigned, opt => opt.Ignore());
+
+        // PatientAccessLog -> PatientAccessLogDto
+        CreateMap<PatientAccessLog, PatientAccessLogDto>()
+            .ForMember(d => d.PatientName, opt => opt.MapFrom(s => s.Patient.FirstName + " " + s.Patient.LastName))
+            .ForMember(d => d.DoctorName, opt => opt.MapFrom(s => s.Doctor.FirstName + " " + s.Doctor.LastName));
     }
 }

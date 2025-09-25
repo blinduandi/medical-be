@@ -41,6 +41,7 @@ builder.Services.AddScoped<EmailTemplateService>();
 // Machine Learning & Analytics Services
 builder.Services.AddScoped<IPatternDetectionService, PatternDetectionService>();
 builder.Services.AddScoped<IDataSeedingService, DataSeedingService>();
+builder.Services.AddScoped<IPatientAccessLogService, PatientAccessLogService>();
 builder.Services.AddHostedService<MedicalMonitoringBackgroundService>();
 
 // ---------------- Quartz Setup ----------------

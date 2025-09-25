@@ -46,6 +46,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
     
     // Patient-Doctor Relationships
     public DbSet<PatientDoctor> PatientDoctors { get; set; }
+    
+    // Patient Access Logs
+    public DbSet<PatientAccessLog> PatientAccessLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -493,6 +496,34 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, string,
 
             entity.HasIndex(pd => pd.AssignedDate);
             entity.HasIndex(pd => pd.IsActive);
+        });
+
+        // Configure PatientAccessLog
+        builder.Entity<PatientAccessLog>(entity =>
+        {
+            entity.HasKey(pal => pal.Id);
+            entity.Property(pal => pal.AccessType).IsRequired().HasMaxLength(200);
+            entity.Property(pal => pal.AccessReason).HasMaxLength(500);
+            entity.Property(pal => pal.IpAddress).HasMaxLength(50);
+            entity.Property(pal => pal.UserAgent).HasMaxLength(500);
+            entity.Property(pal => pal.SessionId).HasMaxLength(100);
+
+            entity.HasOne(pal => pal.Patient)
+                .WithMany()
+                .HasForeignKey(pal => pal.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(pal => pal.Doctor)
+                .WithMany()
+                .HasForeignKey(pal => pal.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indexes for performance
+            entity.HasIndex(pal => pal.PatientId);
+            entity.HasIndex(pal => pal.DoctorId);
+            entity.HasIndex(pal => pal.AccessedAt);
+            entity.HasIndex(pal => new { pal.PatientId, pal.AccessedAt });
+            entity.HasIndex(pal => new { pal.DoctorId, pal.AccessedAt });
         });
     }
 }
