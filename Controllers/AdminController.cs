@@ -103,6 +103,7 @@ namespace medical_be.Controllers
             try
             {
                 var query = _context.Users.AsQueryable();
+                _logger.LogInformation(role) ;
 
                 // Filter by role if specified
                 if (!string.IsNullOrEmpty(role))
@@ -142,7 +143,12 @@ namespace medical_be.Controllers
                                 IsActive = userEntity.IsActive,
                                 Specialty = userEntity.Specialty.ToString(),
                                 Experience = userEntity.Experience,
-                                ClinicId = userEntity.ClinicId ?? "N/A"
+                                ClinicId = userEntity.ClinicId ?? "N/A",
+                                DateOfBirth = userEntity.DateOfBirth,
+                                Gender = (Gender)userEntity.Gender,
+                                Address = userEntity.Address,
+                                IDNP = userEntity.IDNP,
+                                
                             },
                             Roles = userRoles
                         });
@@ -163,12 +169,14 @@ namespace medical_be.Controllers
                                 BloodType = userEntity.BloodType,
                                 DateOfBirth = userEntity.DateOfBirth,
                                 Address = userEntity.Address,
-                                IsActive = userEntity.IsActive
+                                IsActive = userEntity.IsActive,
+                                Gender = (Gender)userEntity.Gender
                             },
                             Roles = userRoles
                         });
                     }
                 }
+                _logger.LogInformation("Retrieved users from database: {Users}", users);
 
                 return PaginatedResponse(usersWithRoles, page, pageSize, totalUsers, "Users retrieved successfully");
             }
@@ -224,7 +232,7 @@ namespace medical_be.Controllers
                     DateOfBirth = createUserDto.DateOfBirth.Value,
                     Address = createUserDto.Address,
                     IsActive = true,
-                    EmailConfirmed = true
+                    EmailConfirmed = true,
                 };
 
                 var result = await _userManager.CreateAsync(user, createUserDto.Password);
@@ -1353,7 +1361,7 @@ namespace medical_be.Controllers
                     Id = user.Id,
                     FirstName = user.FirstName,
                     LastName = user.LastName,
-                    Gender = user.Gender,
+                    Gender = (Gender)user.Gender,
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
                     IDNP = user.IDNP,
@@ -1437,6 +1445,7 @@ namespace medical_be.Controllers
                 if (dto.LastName != null) patient.LastName = dto.LastName;
                 if (dto.Address != null) patient.Address = dto.Address;
                 if (dto.Email != null) patient.Email = dto.Email;
+                if (dto.BloodType.HasValue) patient.BloodType = dto.BloodType.Value.ToString();
 
                 await _context.SaveChangesAsync();
 

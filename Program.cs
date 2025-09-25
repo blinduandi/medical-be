@@ -9,6 +9,7 @@ using medical_be.Services;
 using Quartz;
 using Quartz.Impl;
 using Quartz.Spi;
+using System.Text.Json.Serialization;
 
 // Load environment variables from .env file
 Env.Load();
@@ -60,6 +61,11 @@ builder.Services.AddQuartz(q =>
 // Hosted service for Quartz
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // Add controllers
 builder.Services.AddControllers();
