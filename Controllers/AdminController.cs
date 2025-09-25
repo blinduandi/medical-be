@@ -1311,6 +1311,64 @@ namespace medical_be.Controllers
             }
         }
 
+        [HttpPost("CreatePatient")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreatePatient([FromBody] UserDto dto)
+        {
+            try
+            {
+                // Map UserDto to RegisterDto
+                var patientRegisterDto = new RegisterDto
+                {
+                    FirstName = dto.FirstName,
+                    LastName = dto.LastName,
+                    Gender = dto.Gender,
+                    Email = dto.Email,
+                    PhoneNumber = dto.PhoneNumber,
+                    DateOfBirth = dto.DateOfBirth,
+                    Address = dto.Address,
+                    IDNP = dto.IDNP,
+                    UserRole = UserRegistrationType.Patient,
+                    Password = "DefaultPassword123!", // you can generate a temporary password
+                    ConfirmPassword = "DefaultPassword123!"
+                };
+
+                // Use the AuthService to register the patient
+                var result = await _authService.RegisterAsync(patientRegisterDto);
+
+                if (!result.Success)
+                {
+                    _logger.LogWarning("Failed to create patient: {Email}, Errors: {Errors}", dto.Email, string.Join(", ", result.Errors));
+                    return BadRequest(new { message = result.Message, errors = result.Errors });
+                }
+
+                var user = result.AuthResponse!.User;
+
+                // Map the returned user to PatientProfileDto
+                var patientDto = new PatientProfileDto
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Gender = user.Gender,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    IDNP = user.IDNP,
+                    Address = user.Address,
+                    DateOfBirth = user.DateOfBirth,
+                    IsActive = user.IsActive
+                };
+
+                _logger.LogInformation("Patient created successfully: {Email}", user.Email);
+                return Ok(patientDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating patient: {Email}", dto.Email);
+                return StatusCode(500, new { message = "Internal server error", details = ex.Message });
+            }
+        }
+
         [HttpPut("updateDoctor/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateDoctor(string id, [FromBody] DoctorUpdateDto dto)
@@ -1357,6 +1415,133 @@ namespace medical_be.Controllers
                 return StatusCode(500, new { message = "Internal server error", details = ex.Message });
             }
         }
+
+        [HttpPut("updatePatient/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdatePatient(string id, [FromBody] UserDto dto)
+        {
+        try{
+            var patient = await _context.Users
+                .Where(u => u.Id == id && u.UserRoles.Any(r => r.Role.Name == "Patient"))
+                .FirstOrDefaultAsync();
+
+            if (patient == null)
+                return NotFound("Patient not found.");
+
+                // Update only allowed fields
+                if (dto.PhoneNumber != null) patient.PhoneNumber = dto.PhoneNumber;
+                if (dto.FirstName != null) patient.FirstName = dto.FirstName;
+                if (dto.LastName != null) patient.LastName = dto.LastName;
+                if (dto.Address != null) patient.Address = dto.Address;
+                if (dto.Email != null) patient.Email = dto.Email;
+
+                await _context.SaveChangesAsync();
+
+                // Return updated patient DTO
+                var patientDto = new PatientProfileDto
+                {
+                    Id = patient.Id,
+                    FirstName = patient.FirstName,
+                    LastName = patient.LastName,
+                    Email = patient.Email ?? string.Empty,
+                    PhoneNumber = patient.PhoneNumber,
+                    IDNP = patient.IDNP,
+                    IsActive = patient.IsActive
+                };
+
+                return Ok(patientDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating patient with userId: {UserId}", User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+                return StatusCode(500, new { message = "Internal server error", details = ex.Message });
+            }
+        }
+
+        [HttpGet("{doctorId}/patient-count")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetDoctorPatientCount(string doctorId)
+        {
+            try
+            {
+                // Count all active patients for this doctor
+                var totalPatients = await _context.PatientDoctors
+                    .Where(pd => pd.DoctorId == doctorId && pd.IsActive)
+                    .CountAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    doctorId = doctorId,
+                    totalPatients
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting patient count for doctor: {DoctorId}", doctorId);
+                return StatusCode(500, new { message = "An error occurred while retrieving patient count" });
+            }
+        }
+
+        // getting appoiments for doctors
+        [HttpGet("{doctorId}/appointments")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAppointmentsForDoctor(
+            string doctorId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var query = _context.Appointments
+                    .AsNoTracking()
+                    .Include(a => a.Patient)
+                    .Where(a => a.DoctorId == doctorId);
+
+                var total = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(a => a.AppointmentDate)
+                    .Skip((Math.Max(page, 1) - 1) * Math.Clamp(pageSize, 1, 200))
+                    .Take(Math.Clamp(pageSize, 1, 200))
+                    .Select(a => new AppointmentDto
+                    {
+                        Id = a.Id,
+                        PatientId = a.PatientId,
+                        DoctorId = a.DoctorId,
+                        PatientName = a.Patient.FirstName + " " + a.Patient.LastName,
+                        DoctorName = string.Empty,
+                        Specialty = string.Empty,
+                        AppointmentDate = a.AppointmentDate,
+                        Duration = a.Duration,
+                        Status = a.Status,
+                        Reason = a.Reason,
+                        Notes = a.Notes,
+                        CreatedAt = a.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = items,
+                    pagination = new
+                    {
+                        currentPage = page,
+                        pageSize,
+                        totalItems = total,
+                        totalPages = (int)Math.Ceiling((double)total / pageSize)
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving appointments for doctor {DoctorId}", doctorId);
+                return StatusCode(500, new { message = "Failed to retrieve appointments" });
+            }
+        }
+
+
 
         [HttpDelete("deleteDoctor/{id}")]
         [Authorize(Roles = "Admin")]
