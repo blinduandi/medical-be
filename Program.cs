@@ -61,11 +61,6 @@ builder.Services.AddQuartz(q =>
 // Hosted service for Quartz
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    });
 
 // Add controllers
 builder.Services.AddControllers();
