@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Appointment Confirmation</title>
+    <title>Appointment Reminder</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -57,9 +57,9 @@
 </head>
 <body>
     <div class="container">
-        <h2>Appointment Scheduled</h2>
+        <h2>Appointment Reminder</h2>
         <p>Dear {{patient.FirstName}} {{patient.LastName}},</p>
-        <p>Your appointment has been successfully scheduled. Here are the details:</p>
+        <p>This is a friendly reminder for your upcoming appointment:</p>
 
         <div class="details">
             <p><strong>Date & time:</strong> {{AppointmentDate}}</p>
@@ -69,7 +69,7 @@
             <p><strong>Notes:</strong> {{Notes}}</p>
         </div>
 
-        <p>Please make sure to arrive at least 10 minutes before your appointment. If you need to reschedule, kindly contact us at <a href="mailto:support@medtrack.com">support@medtrack.com</a>.</p>
+        <p>Please make sure to arrive at least 10 minutes before your appointment. If you need to reschedule, contact us at <a href="mailto:support@medtrack.com">support@medtrack.com</a>.</p>
 
         <p>We look forward to seeing you.</p>
 

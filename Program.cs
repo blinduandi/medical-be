@@ -55,7 +55,7 @@ builder.Services.AddQuartz(q =>
         .ForJob(jobKey)
         .WithIdentity("NotificationJob-trigger")
         .StartNow()
-        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); 
+        .WithSimpleSchedule(x => x.WithIntervalInSeconds(30).RepeatForever())); 
 });
 
 // Hosted service for Quartz

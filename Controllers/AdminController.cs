@@ -1393,6 +1393,9 @@ namespace medical_be.Controllers
                 return NotFound("Doctor not found.");
 
                 // Update only allowed fields
+                if (dto.FirstName != null) doctor.FirstName = dto.FirstName;
+                if (dto.LastName != null) doctor.LastName = dto.LastName;
+                if (dto.Email != null) doctor.Email = dto.Email;
                 if (dto.PhoneNumber != null) doctor.PhoneNumber = dto.PhoneNumber;
                 if (dto.Address != null) doctor.Address = dto.Address;
                 if (dto.IsActive.HasValue) doctor.IsActive = dto.IsActive.Value;
