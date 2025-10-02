@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Appointment Confirmation</title>
+    <title>Appointment Scheduled</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -57,21 +57,21 @@
 </head>
 <body>
     <div class="container">
-        <h2>Appointment Scheduled</h2>
-        <p>Dear {{patient.FirstName}} {{patient.LastName}},</p>
-        <p>Your appointment has been successfully scheduled. Here are the details:</p>
+        <h2>Appointment Sheduled</h2>
+        <p>Dear Dr. {{doctor.FirstName}} {{doctor.LastName}},</p>
+        <p>You have an upcoming appointment scheduled:</p>
 
         <div class="details">
             <p><strong>Date & time:</strong> {{AppointmentDate}}</p>
             <p><strong>Duration:</strong> {{Duration}} minutes</p>
-            <p><strong>Doctor:</strong> Dr. {{doctor.FirstName}} {{doctor.LastName}}</p>
+            <p><strong>Patient:</strong> {{patient.FirstName}} {{patient.LastName}}</p>
             <p><strong>Reason:</strong> {{Reason}}</p>
             <p><strong>Notes:</strong> {{Notes}}</p>
         </div>
 
-        <p>Please make sure to arrive at least 10 minutes before your appointment. If you need to reschedule, kindly contact us at <a href="mailto:support@medtrack.com">support@medtrack.com</a>.</p>
+        <p>Please make sure to prepare accordingly and be ready for the scheduled time. If there are any changes, kindly update your schedule or contact us at <a href="mailto:support@medtrack.com">support@medtrack.com</a>.</p>
 
-        <p>We look forward to seeing you.</p>
+        <p>Thank you!</p>
 
         <div class="footer">
             &copy; {{CurrentYear}} MedTrack. All rights reserved.<br>

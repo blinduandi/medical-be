@@ -93,8 +93,22 @@ public class UserDto
     public Gender Gender { get; set; }
     public string? Address { get; set; }
     public bool IsActive { get; set; }
+    public BloodType? BloodType { get; set; }
     public List<string> Roles { get; set; } = new();
 }
+
+public enum BloodType
+{
+    A_Positive = 1,    // A+
+    A_Negative = 2,    // A-
+    B_Positive = 3,    // B+
+    B_Negative = 4,    // B-
+    AB_Positive = 5,   // AB+
+    AB_Negative = 6,   // AB-
+    O_Positive = 7,    // O+
+    O_Negative = 8     // O-
+}
+
 
 public class ChangePasswordDto
 {

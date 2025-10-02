@@ -178,6 +178,7 @@ public class AppointmentController : BaseApiController
             );
             if (overlaps)
                 return ValidationErrorResponse("The doctor already has an appointment in this time range");
+            
 
             var appt = new Appointment
             {
@@ -207,7 +208,6 @@ public class AppointmentController : BaseApiController
                     { "doctor.LastName", doctor.LastName },
                     { "doctor.Specialty", doctor.Specialty.ToString() },
                     { "AppointmentDate", appt.AppointmentDate.ToString("f") },
-                    { "Duration", appt.Duration.TotalMinutes.ToString() },
                     { "Reason", appt.Reason ?? "N/A" },
                     { "Notes", appt.Notes ?? "N/A" }
                 };
@@ -215,6 +215,29 @@ public class AppointmentController : BaseApiController
                 var body = await _emailTemplateService.GetTemplateAsync("AppointmentConfEmail.html", placeholders);
 
                 await _notificationService.SendEmailAsync(patient.Email, "Appointment Confirmation", body);
+
+                var bodyDoctor = await _emailTemplateService.GetTemplateAsync("AppointmentConfEmailDoctor.html", placeholders);
+                await _notificationService.SendEmailAsync(doctor.Email, "Appointment Scheduled", bodyDoctor);
+                // reminders
+                // 1 day before
+                _context.Notifications.Add(new SingleNotification
+                {
+                    Title = "Appointment reminder",
+                    ToEmail = patient.Email,
+                    Status = "waiting_for_sending",
+                    Body = await _emailTemplateService.GetTemplateAsync("PatientAppReminder.html", placeholders),
+                    ScheduledAt = appt.AppointmentDate.AddDays(-1) // 1 day before
+                });
+
+                // // 30 minutes before
+                // _context.Notifications.Add(new SingleNotification
+                // {
+                //     Title = "Appointment reminder - 1 hour before",
+                //     ToEmail = patient.Email,
+                //     Status = "waiting_for_sending",
+                //     Body = await _emailTemplateService.GetTemplateAsync("PatientAppReminder.html", placeholders),
+                //     ScheduledAt = appt.AppointmentDate.AddHours(-1) // 1 day before
+                // });
                 _logger.LogInformation("Loading email template: {Template}", "AppointmentConfEmail.html");
 
             }

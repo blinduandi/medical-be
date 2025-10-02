@@ -9,6 +9,7 @@ using medical_be.Services;
 using Quartz;
 using Quartz.Impl;
 using Quartz.Spi;
+using System.Text.Json.Serialization;
 
 // Load environment variables from .env file
 Env.Load();
@@ -54,7 +55,7 @@ builder.Services.AddQuartz(q =>
         .ForJob(jobKey)
         .WithIdentity("NotificationJob-trigger")
         .StartNow()
-        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); 
+        .WithSimpleSchedule(x => x.WithIntervalInSeconds(30).RepeatForever())); 
 });
 
 // Hosted service for Quartz
