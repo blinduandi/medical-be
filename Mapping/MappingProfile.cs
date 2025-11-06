@@ -65,5 +65,12 @@ public class MappingProfile : Profile
         CreateMap<PatientAccessLog, PatientAccessLogDto>()
             .ForMember(d => d.PatientName, opt => opt.MapFrom(s => s.Patient.FirstName + " " + s.Patient.LastName))
             .ForMember(d => d.DoctorName, opt => opt.MapFrom(s => s.Doctor.FirstName + " " + s.Doctor.LastName));
+
+        // MedicalDocument -> MedicalDocumentDto
+        CreateMap<MedicalDocument, MedicalDocumentDto>()
+            .ForMember(d => d.DocumentType, opt => opt.MapFrom(s => s.DocumentType.ToString()))
+            .ForMember(d => d.FilePath, opt => opt.MapFrom(s => s.StoredFileName))
+            .ForMember(d => d.FileType, opt => opt.MapFrom(s => s.FileType))
+            .ForMember(d => d.UploadedByName, opt => opt.MapFrom(s => s.UploadedBy != null ? (s.UploadedBy.FirstName + " " + s.UploadedBy.LastName) : ""));
     }
 }

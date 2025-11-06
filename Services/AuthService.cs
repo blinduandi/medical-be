@@ -430,7 +430,7 @@ public class AuthService : IAuthService
 		}
 
 		// Generate a 6-digit verification code
-		var code = "123456";//new Random().Next(100000, 999999).ToString();
+		var code = new Random().Next(100000, 999999).ToString();
 		
 		// Set expiration to 15 minutes from now
 		user.VerificationCode = code;

@@ -104,3 +104,14 @@ public class FileUpdateDto
     public string? Password { get; set; }
     public bool? IsTemporary { get; set; }
 }
+
+public class MyDocumentUploadDto
+{
+    [Required]
+    public IFormFile File { get; set; } = null!;
+
+    [Required]
+    public string DocumentType { get; set; } = null!;
+
+    public string? Description { get; set; }
+}
