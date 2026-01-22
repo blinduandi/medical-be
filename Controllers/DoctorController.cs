@@ -76,6 +76,53 @@ namespace medical_be.Controllers
         }
 
         /// <summary>
+        /// Get current doctor's profile
+        /// </summary>
+        [HttpGet("profile")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            try
+            {
+                var userId = User.GetUserId();
+                
+                var doctor = await _context.Users
+                    .Where(u => u.Id == userId)
+                    .Select(u => new DoctorProfileDto
+                    {
+                        Id = u.Id,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email ?? string.Empty,
+                        PhoneNumber = u.PhoneNumber ?? string.Empty,
+                        IDNP = u.IDNP,
+                        ClinicId = u.ClinicId,
+                        Specialty = u.Specialty.ToString(),
+                        Experience = u.Experience,
+                        TotalPatients = _context.PatientDoctors.Count(pd => pd.DoctorId == userId && pd.IsActive),
+                        DateOfBirth = u.DateOfBirth,
+                        Gender = u.Gender,
+                        Address = u.Address,
+                        IsActive = u.IsActive,
+                        LastActivity = null
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (doctor == null)
+                {
+                    return NotFoundResponse("Doctor profile not found");
+                }
+
+                return SuccessResponse(doctor, "Profile retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting doctor profile for user {UserId}", User.GetUserId());
+                return InternalServerErrorResponse("Failed to retrieve profile");
+            }
+        }
+
+        /// <summary>
         /// Search doctors by IDNP
         /// </summary>
         [HttpPost("search")]

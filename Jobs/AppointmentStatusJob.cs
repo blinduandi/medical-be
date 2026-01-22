@@ -27,17 +27,23 @@ public class AppointmentStatusJob : IJob
             var now = DateTime.UtcNow;
             
             // Find appointments that have passed their end time but are not marked as completed
+            // Fetch to memory first to avoid DateTime.Add translation issues
             var pastAppointments = await _context.Appointments
                 .Where(a => 
                     (a.Status == AppointmentStatus.Scheduled || 
                      a.Status == AppointmentStatus.Confirmed || 
                      a.Status == AppointmentStatus.InProgress) &&
-                    a.AppointmentDate.Add(a.Duration) < now)
+                    a.AppointmentDate < now)
                 .ToListAsync();
 
-            if (pastAppointments.Any())
+            // Filter in memory to check if appointment end time has passed
+            var appointmentsToComplete = pastAppointments
+                .Where(a => a.AppointmentDate.Add(a.Duration) < now)
+                .ToList();
+
+            if (appointmentsToComplete.Any())
             {
-                foreach (var appointment in pastAppointments)
+                foreach (var appointment in appointmentsToComplete)
                 {
                     appointment.Status = AppointmentStatus.Completed;
                     appointment.UpdatedAt = now;
@@ -47,7 +53,7 @@ public class AppointmentStatusJob : IJob
                 
                 _logger.LogInformation(
                     "Marked {Count} past appointments as completed at {Time}", 
-                    pastAppointments.Count, 
+                    appointmentsToComplete.Count, 
                     now);
             }
         }
