@@ -19,35 +19,37 @@ public class MedicalMonitoringBackgroundService : BackgroundService
     {
         _logger.LogInformation("Medical Monitoring Background Service started at {Time}", DateTime.UtcNow);
 
-        // Wait a bit before starting the first analysis
-        await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
-
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            // Wait a bit before starting the first analysis
+            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+
+            while (!stoppingToken.IsCancellationRequested)
             {
-                using var scope = _serviceProvider.CreateScope();
-                var patternService = scope.ServiceProvider.GetRequiredService<IPatternDetectionService>();
-
-                _logger.LogInformation("Starting automated medical pattern detection analysis at {Time}", DateTime.UtcNow);
-
-                // Run complete pattern analysis
-                var result = await patternService.RunCompleteAnalysisAsync();
-                
-                _logger.LogInformation("Pattern detection completed. Summary: {TotalAlerts} alerts, {HighRiskPatients} high-risk patients", 
-                    result.Summary.TotalAlerts, result.Summary.TotalHighRiskPatients);
-
-                // Log high severity patterns
-                var highSeverityPatterns = result.Patterns.Where(p => p.Severity == "HIGH").ToList();
-                if (highSeverityPatterns.Any())
+                try
                 {
-                    _logger.LogWarning("CRITICAL: {HighSeverityCount} high severity patterns detected:", highSeverityPatterns.Count);
+                    using var scope = _serviceProvider.CreateScope();
+                    var patternService = scope.ServiceProvider.GetRequiredService<IPatternDetectionService>();
+
+                    _logger.LogInformation("Starting automated medical pattern detection analysis at {Time}", DateTime.UtcNow);
+
+                    // Run complete pattern analysis
+                    var result = await patternService.RunCompleteAnalysisAsync();
                     
-                    foreach (var pattern in highSeverityPatterns.Take(5)) // Log first 5
+                    _logger.LogInformation("Pattern detection completed. Summary: {TotalAlerts} alerts, {HighRiskPatients} high-risk patients", 
+                        result.Summary.TotalAlerts, result.Summary.TotalHighRiskPatients);
+
+                    // Log high severity patterns
+                    var highSeverityPatterns = result.Patterns.Where(p => p.Severity == "HIGH").ToList();
+                    if (highSeverityPatterns.Any())
                     {
-                        _logger.LogWarning("  - {PatternType}: {Description}", pattern.PatternType, pattern.Description);
+                        _logger.LogWarning("CRITICAL: {HighSeverityCount} high severity patterns detected:", highSeverityPatterns.Count);
+                        
+                        foreach (var pattern in highSeverityPatterns.Take(5)) // Log first 5
+                        {
+                            _logger.LogWarning("  - {PatternType}: {Description}", pattern.PatternType, pattern.Description);
+                        }
                     }
-                }
 
                 // Log top risk patients
                 if (result.HighRiskPatients.Any())
@@ -95,8 +97,25 @@ public class MedicalMonitoringBackgroundService : BackgroundService
                 _logger.LogError(ex, "Error in medical monitoring background service");
                 
                 // Wait 1 hour before retry on error
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Medical monitoring background service cancelled during retry wait");
+                    break;
+                }
             }
+        }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Medical monitoring background service cancelled during initialization");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fatal error in medical monitoring background service");
         }
 
         _logger.LogInformation("Medical Monitoring Background Service stopped at {Time}", DateTime.UtcNow);

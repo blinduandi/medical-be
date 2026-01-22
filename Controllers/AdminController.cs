@@ -2164,5 +2164,62 @@ namespace medical_be.Controllers
                 return InternalServerErrorResponse("An error occurred while retrieving access log statistics");
             }
         }
+
+        /// <summary>
+        /// TEMPORARY: Migrate existing appointments to create patient-doctor relationships
+        /// DELETE THIS ENDPOINT AFTER RUNNING ONCE
+        /// </summary>
+        [HttpPost("migrate-appointment-relationships")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> MigrateAppointmentRelationships()
+        {
+            try
+            {
+                var appointments = await _context.Appointments
+                    .Select(a => new { a.PatientId, a.DoctorId })
+                    .Distinct()
+                    .ToListAsync();
+
+                int created = 0, reactivated = 0, skipped = 0;
+
+                foreach (var appointment in appointments)
+                {
+                    var existing = await _context.PatientDoctors
+                        .FirstOrDefaultAsync(pd => pd.PatientId == appointment.PatientId && pd.DoctorId == appointment.DoctorId);
+
+                    if (existing == null)
+                    {
+                        _context.PatientDoctors.Add(new PatientDoctor
+                        {
+                            PatientId = appointment.PatientId,
+                            DoctorId = appointment.DoctorId,
+                            IsActive = true,
+                            AssignedDate = DateTime.UtcNow,
+                            Notes = "Migrated from existing appointments"
+                        });
+                        created++;
+                    }
+                    else if (!existing.IsActive)
+                    {
+                        existing.IsActive = true;
+                        existing.Notes += " - Reactivated";
+                        reactivated++;
+                    }
+                    else
+                    {
+                        skipped++;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return SuccessResponse(new { created, reactivated, skipped, total = appointments.Count }, "Migration completed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error migrating relationships");
+                return InternalServerErrorResponse("Migration failed");
+            }
+        }
     }
 }

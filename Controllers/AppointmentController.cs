@@ -195,6 +195,45 @@ public class AppointmentController : BaseApiController
             _context.Appointments.Add(appt);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Appointment {AppointmentId} created. Now checking patient-doctor relationship...", appt.Id);
+
+            // Automatically add patient to doctor's patient list if not already added
+            var existingRelationship = await _context.PatientDoctors
+                .FirstOrDefaultAsync(pd => pd.PatientId == dto.PatientId && pd.DoctorId == dto.DoctorId);
+
+            _logger.LogInformation("Existing relationship found: {Exists} (PatientId: {PatientId}, DoctorId: {DoctorId})", 
+                existingRelationship != null, dto.PatientId, dto.DoctorId);
+
+            if (existingRelationship == null)
+            {
+                // Create new patient-doctor relationship
+                var patientDoctor = new PatientDoctor
+                {
+                    PatientId = dto.PatientId,
+                    DoctorId = dto.DoctorId,
+                    AssignedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    Notes = "Automatically added via appointment booking"
+                };
+                _context.PatientDoctors.Add(patientDoctor);
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Successfully added patient {PatientId} to doctor {DoctorId} patient list", dto.PatientId, dto.DoctorId);
+            }
+            else if (!existingRelationship.IsActive)
+            {
+                // Reactivate if previously deactivated
+                existingRelationship.IsActive = true;
+                existingRelationship.DeactivatedDate = null;
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Reactivated patient {PatientId} in doctor {DoctorId} patient list", dto.PatientId, dto.DoctorId);
+            }
+            else
+            {
+                _logger.LogInformation("Patient {PatientId} already active in doctor {DoctorId} patient list", dto.PatientId, dto.DoctorId);
+            }
+
             var patient = await _context.Users.FindAsync(dto.PatientId);
             var doctor = await _context.Users.FindAsync(dto.DoctorId);
 
