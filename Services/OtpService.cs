@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
+using medical_be.Shared.Interfaces;
+using medical_be.Services;
 
 namespace medical_be.Services
 {
@@ -17,17 +19,23 @@ namespace medical_be.Services
         private readonly IMemoryCache _cache;
         private readonly ILogger<OtpService> _logger;
         private readonly ISmsService _smsService;
+        private readonly INotificationService _notificationService;
+        private readonly EmailTemplateService _emailTemplateService;
         private readonly int _otpExpiryMinutes = 5;
         private readonly int _otpLength = 6;
 
         public OtpService(
             IMemoryCache cache,
             ILogger<OtpService> logger,
-            ISmsService smsService)
+            ISmsService smsService,
+            INotificationService notificationService,
+            EmailTemplateService emailTemplateService)
         {
             _cache = cache;
             _logger = logger;
             _smsService = smsService;
+            _notificationService = notificationService;
+            _emailTemplateService = emailTemplateService;
         }
 
     public Task<string> GenerateOtpAsync(string userId)
@@ -83,14 +91,44 @@ namespace medical_be.Services
             }
         }
 
-        public async Task<bool> SendOtpAsync(string userId, string phoneNumber)
+        public async Task<bool> SendOtpAsync(string userId, string destination)
         {
             try
             {
                 var otp = await GenerateOtpAsync(userId);
-                var message = $"Your medical portal verification code is: {otp}. Valid for {_otpExpiryMinutes} minutes.";
-                
-                return await _smsService.SendSmsAsync(phoneNumber, message);
+                var subject = "Your verification code";
+                var body = $"<p>Your medical portal verification code is: <strong>{otp}</strong>.</p><p>Valid for {_otpExpiryMinutes} minutes.</p>";
+
+                // If destination looks like an email address, send via email
+                if (!string.IsNullOrEmpty(destination) && destination.Contains("@"))
+                {
+                    try
+                    {
+                        await _notificationService.SendEmailAsync(destination, subject, body);
+                        _logger.LogInformation("OTP email sent to {Destination} for user {UserId}", destination, userId);
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error sending OTP email to {Destination} for user {UserId}", destination, userId);
+                        return false;
+                    }
+                }
+
+                // Fallback: treat destination as phone number and send SMS
+                if (!string.IsNullOrEmpty(destination))
+                {
+                    var message = $"Your medical portal verification code is: {otp}. Valid for {_otpExpiryMinutes} minutes.";
+                    var smsResult = await _smsService.SendSmsAsync(destination, message);
+                    if (smsResult)
+                    {
+                        _logger.LogInformation("OTP SMS sent to {Destination} for user {UserId}", destination, userId);
+                        return true;
+                    }
+                }
+
+                _logger.LogWarning("No valid destination provided for OTP for user {UserId}", userId);
+                return false;
             }
             catch (Exception ex)
             {
