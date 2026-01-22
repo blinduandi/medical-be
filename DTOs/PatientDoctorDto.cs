@@ -119,3 +119,17 @@ public class AdminRemovePatientDoctorDto
     [MaxLength(500)]
     public string? Reason { get; set; }
 }
+
+/// <summary>
+/// DTO for doctor to link a patient by email or IDNP
+/// </summary>
+public class LinkPatientDto
+{
+    [EmailAddress]
+    public string? Email { get; set; }
+
+    public string? IDNP { get; set; }
+
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}

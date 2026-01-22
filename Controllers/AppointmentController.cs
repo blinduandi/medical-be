@@ -195,6 +195,39 @@ public class AppointmentController : BaseApiController
             _context.Appointments.Add(appt);
             await _context.SaveChangesAsync();
 
+            // Automatically link patient to doctor if not already linked
+            var existingRelationship = await _context.PatientDoctors
+                .FirstOrDefaultAsync(pd => pd.PatientId == dto.PatientId && pd.DoctorId == dto.DoctorId);
+
+            if (existingRelationship == null)
+            {
+                var patientDoctorLink = new PatientDoctor
+                {
+                    PatientId = dto.PatientId,
+                    DoctorId = dto.DoctorId,
+                    AssignedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    AssignedBy = "Appointment",
+                    Notes = $"Automatically linked via appointment on {dto.AppointmentDate:yyyy-MM-dd}"
+                };
+
+                _context.PatientDoctors.Add(patientDoctorLink);
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Created patient-doctor relationship: PatientId={PatientId}, DoctorId={DoctorId}", 
+                    dto.PatientId, dto.DoctorId);
+            }
+            else if (!existingRelationship.IsActive)
+            {
+                // Reactivate if it was previously deactivated
+                existingRelationship.IsActive = true;
+                existingRelationship.DeactivatedDate = null;
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Reactivated patient-doctor relationship: PatientId={PatientId}, DoctorId={DoctorId}", 
+                    dto.PatientId, dto.DoctorId);
+            }
+
             var patient = await _context.Users.FindAsync(dto.PatientId);
             var doctor = await _context.Users.FindAsync(dto.DoctorId);
 
