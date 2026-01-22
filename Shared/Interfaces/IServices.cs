@@ -27,6 +27,14 @@ public interface IAuthService
     // Email verification methods
     Task<bool> GenerateVerificationCodeAsync(string email);
     Task<medical_be.DTOs.VerificationResponseDto> VerifyCodeAsync(string email, string code);
+    
+    // Password reset methods
+    Task<bool> ForgotPasswordAsync(string email);
+    Task<medical_be.DTOs.ResetPasswordResponseDto> ResetPasswordAsync(medical_be.DTOs.ResetPasswordDto dto);
+    Task<medical_be.DTOs.ResetPasswordResponseDto> ChangePasswordWithTokenAsync(medical_be.DTOs.ChangePasswordWithTokenDto dto);
+    
+    // Doctor account creation with temporary password
+    Task<medical_be.DTOs.DoctorCreationResultDto> CreateDoctorWithTemporaryPasswordAsync(medical_be.DTOs.RegisterDto registerDto);
 }
 
 public interface IMedicalService

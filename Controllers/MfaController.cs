@@ -20,17 +20,20 @@ namespace medical_be.Controllers
         private readonly IOtpService _otpService;
         private readonly IAuditService _auditService;
         private readonly ILogger<MfaController> _logger;
+        private readonly IAuthService _authService;
 
         public MfaController(
             UserManager<User> userManager,
             IOtpService otpService,
             IAuditService auditService,
-            ILogger<MfaController> logger)
+            ILogger<MfaController> logger,
+            IAuthService authService)
         {
             _userManager = userManager;
             _otpService = otpService;
             _auditService = auditService;
             _logger = logger;
+            _authService = authService;
         }
 
         /// <summary>
@@ -241,6 +244,49 @@ namespace medical_be.Controllers
         }
 
         /// <summary>
+        /// Verify login OTP and get authentication token
+        /// </summary>
+        [HttpPost("verify-login-otp")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyLoginOtp([FromBody] VerifyLoginOtpRequest request)
+        {
+            try
+            {
+                var user = await _userManager.FindByEmailAsync(request.Email);
+                if (user == null || !user.IsActive)
+                {
+                    return UnauthorizedResponse("Invalid credentials");
+                }
+
+                // Validate OTP
+                var isValidOtp = await _otpService.ValidateOtpAsync(user.Id, request.Otp);
+                if (!isValidOtp)
+                {
+                    _logger.LogWarning("Invalid OTP for user: {Email}", request.Email);
+                    return UnauthorizedResponse("Invalid or expired OTP");
+                }
+
+                // OTP is valid - get auth response (which checks for password change requirement)
+                var result = await _authService.VerifyMfaLoginAsync(request.Email, request.Otp);
+                if (result == null)
+                {
+                    return UnauthorizedResponse("Authentication failed");
+                }
+
+                // Audit log
+                await _auditService.LogAuditAsync(user.Id, "MfaLoginSuccess", "Successfully verified MFA for login", "User", null, Request.GetClientIpAddress());
+
+                _logger.LogInformation("User {Email} MFA login verified successfully", request.Email);
+                return SuccessResponse(result, "MFA verification successful");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying login OTP for email: {Email}", request.Email);
+                return InternalServerErrorResponse("Internal server error");
+            }
+        }
+
+        /// <summary>
         /// Get MFA status for current user
         /// </summary>
         [HttpGet("status")]
@@ -301,5 +347,16 @@ namespace medical_be.Controllers
         [Required]
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
+    }
+
+    public class VerifyLoginOtpRequest
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(6, MinimumLength = 6)]
+        public string Otp { get; set; } = string.Empty;
     }
 }

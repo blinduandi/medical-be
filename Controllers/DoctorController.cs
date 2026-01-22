@@ -146,12 +146,12 @@ namespace medical_be.Controllers
                     Address = dto.Address,
                     IDNP = dto.IDNP,
                     UserRole = UserRegistrationType.Doctor,
-                    Password = "DefaultPassword123!", // you can generate a temporary password
-                    ConfirmPassword = "DefaultPassword123!"
+                    Password = "TempPlaceholder123!", // Will be replaced by generated password
+                    ConfirmPassword = "TempPlaceholder123!"
                 };
 
-                // Use the AuthService to register the doctor
-                var result = await _authService.RegisterAsync(doctorRegisterDto);
+                // Use the AuthService to create doctor with temporary password
+                var result = await _authService.CreateDoctorWithTemporaryPasswordAsync(doctorRegisterDto);
 
                 if (!result.Success)
                 {
@@ -179,8 +179,14 @@ namespace medical_be.Controllers
                     LastActivity = null
                 };
 
-                _logger.LogInformation("Doctor created successfully: {Email}", user.Email);
-                return Ok(doctorDto);
+                _logger.LogInformation("Doctor created successfully with temporary password: {Email}, expires at {ExpiresAt}", 
+                    user.Email, result.PasswordExpiresAt);
+                    
+                return Ok(new { 
+                    doctor = doctorDto, 
+                    message = result.Message,
+                    passwordExpiresAt = result.PasswordExpiresAt
+                });
             }
             catch (Exception ex)
             {
