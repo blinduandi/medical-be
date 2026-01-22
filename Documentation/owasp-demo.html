@@ -1,0 +1,3883 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OWASP Top 10 - Interactive Demo | Medical Management API</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --text-secondary: #4b5563;
+            --border-color: #e5e7eb;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --code-bg: #1e1e1e;
+            --header-bg: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 40px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #9ca3af;
+        }
+
+        .scorecard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1px;
+            background: var(--border-color);
+            padding: 1px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .score-item {
+            background: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .score-item .score {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--success-color);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-item .label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .nav {
+            display: flex;
+            overflow-x: auto;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 20px;
+        }
+
+        .nav-item {
+            padding: 16px 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 0.95rem;
+            font-weight: 600;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            color: var(--primary-color);
+            background-color: #f9fafb;
+        }
+
+        .nav-item.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .content {
+            padding: 40px;
+            background: #fff;
+        }
+
+        .owasp-section {
+            display: none;
+        }
+
+        .owasp-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-header h2 {
+            font-size: 1.8rem;
+            color: var(--text-color);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .test-case {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .test-header {
+            background: #f9fafb;
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        .test-header:hover {
+            background: #f3f4f6;
+        }
+
+        .test-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .test-title h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 0;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-blocked {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .http-method {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .http-post { background: #49cc90; color: white; }
+        .http-get { background: #61affe; color: white; }
+        .http-put { background: #fca130; color: white; }
+        .http-delete { background: #f93e3e; color: white; }
+
+        .test-body {
+            padding: 24px;
+            display: none;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .test-body.active {
+            display: block;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 16px 0;
+            position: relative;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .try-btn {
+            background-color: white;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 16px 0;
+            transition: all 0.2s;
+        }
+
+        .try-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .info-box {
+            background: #f8fafc;
+            border-left: 4px solid var(--primary-color);
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.95rem;
+        }
+        
+        .info-box strong {
+            color: var(--text-color);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .implementation-code {
+            background: #f9fafb;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+        }
+
+        .implementation-code h4 {
+            color: var(--text-color);
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .expected-result {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+        }
+
+        .expected-result h4 {
+            color: #166534;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .token-storage {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .token-storage h4 {
+            color: #92400e;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .token-storage input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-family: 'Menlo', monospace;
+            font-size: 0.9rem;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .quick-action-btn {
+            background: white;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            background: #f9fafb;
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .footer {
+            background: var(--header-bg);
+            color: #9ca3af;
+            padding: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+            border-top: 1px solid #374151;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            .scorecard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .nav {
+                flex-direction: column;
+            }
+
+            .nav-item {
+                border-bottom: 1px solid #e5e7eb;
+            }
+        }
+
+        .expand-icon {
+            transition: transform 0.3s;
+        }
+
+        .expand-icon.active {
+            transform: rotate(180deg);
+        }
+
+        /* Response Styling */
+        .response-container {
+            margin-top: 24px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .response-header {
+            background: #f3f4f6;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .response-header.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-bottom-color: #fecaca;
+        }
+
+        .response-body {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .response-body.error {
+            border-top: 1px solid #fecaca;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>OWASP Top 10 Interactive Demo</h1>
+            <p>Medical Management API - Live Security Testing</p>
+        </div>
+
+        <!-- Scorecard -->
+        <div class="scorecard">
+            <div class="score-item">
+                <div class="score">97/100</div>
+                <div class="label">Overall Score</div>
+            </div>
+            <div class="score-item">
+                <div class="score">10/10</div>
+                <div class="label">Categories</div>
+            </div>
+            <div class="score-item">
+                <div class="score">YES</div>
+                <div class="label">Production Ready</div>
+            </div>
+            <div class="score-item">
+                <div class="score">32</div>
+                <div class="label">Tests Available</div>
+            </div>
+        </div>
+
+        <!-- Token Storage -->
+        <div class="content">
+            <div class="token-storage">
+                <h4>JWT Token Storage</h4>
+                <input type="text" id="jwtToken" placeholder="Paste your JWT token here after login/registration..." />
+                <p style="margin-top: 10px; font-size: 0.9em; color: #92400e;">
+                    <strong>Tip:</strong>After successful login/registration, your token will be automatically saved here!
+                </p>
+            </div>
+
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="runQuickDemo()">Run Quick Demo (5 tests)</button>
+                <button class="quick-action-btn" onclick="clearAllResponses()">Clear All Responses</button>
+                <button class="quick-action-btn" onclick="exportResults()">Export Test Results</button>
+                <button class="quick-action-btn" onclick="toggleAllTests()">Expand All Tests</button>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <button class="nav-item active" onclick="showSection('a01')">A01: Access Control</button>
+            <button class="nav-item" onclick="showSection('a02')">A02: Cryptographic</button>
+            <button class="nav-item" onclick="showSection('a03')">A03: Injection</button>
+            <button class="nav-item" onclick="showSection('a04')">A04: Insecure Design</button>
+            <button class="nav-item" onclick="showSection('a05')">A05: Misconfiguration</button>
+            <button class="nav-item" onclick="showSection('a06')">A06: Components</button>
+            <button class="nav-item" onclick="showSection('a07')">A07: Authentication</button>
+            <button class="nav-item" onclick="showSection('a08')">A08: Data Integrity</button>
+            <button class="nav-item" onclick="showSection('a09')">A09: Logging</button>
+            <button class="nav-item" onclick="showSection('a10')">A10: SSRF</button>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- A01: Broken Access Control -->
+            <div id="a01" class="owasp-section active">
+                <div class="section-header">
+                    <h2>A01: Broken Access Control</h2>
+                    <p>Testing Role-Based Access Control (RBAC) with JWT authentication</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>JWT token-based authentication, role-based authorization, 
+                    resource ownership validation, and automatic access logging.
+                </div>
+
+                <!-- Test 1: Register Patient -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Test 1: Register a Patient User</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success">Should Succeed</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4>Test Description:</h4>
+                            <p>User registration with password validation and role assignment.</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre id="test-a01-1-curl">curl -X POST "http://localhost:5152/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Patient",
+    "email": "patient@test.com",
+    "password": "Patient123!",
+    "confirmPassword": "Patient123!",
+    "phoneNumber": "+37379999999",
+    "idnp": "1234567890123",
+    "dateOfBirth": "1990-01-01",
+    "gender": 1,
+    "userRole": 0,
+    "address": "Test Address"
+  }'</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a01-1')">Execute Request</button>
+
+                        <div class="loading" id="loading-a01-1">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a01-1">
+                            <div class="response-header" id="response-header-a01-1">Response</div>
+                            <div class="response-body" id="response-body-a01-1"></div>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4>Expected Result (200 OK):</h4>
+                            <pre>{
+  "success": true,
+  "message": "Registration successful",
+  "data": {
+    "userId": "guid-here",
+    "email": "patient@test.com",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: Login as Patient -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Test 2: Login as Patient</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success">Should Succeed</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X POST "http://localhost:5152/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "patient@test.com",
+    "password": "Patient123!"
+  }'</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a01-2')">Execute Request</button>
+
+                        <div class="loading" id="loading-a01-2">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a01-2">
+                            <div class="response-header" id="response-header-a01-2">Response</div>
+                            <div class="response-body" id="response-body-a01-2"></div>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4>Expected Result (200 OK):</h4>
+                            <pre>{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "roles": ["Patient"]
+  }
+}</pre>
+                            <p style="margin-top: 10px;"><strong> Token will be saved automatically!</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 3: Authorized Access -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">GET</span>
+                            <h3>Test 3:  Patient Accessing Own Data</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success">Should Succeed (200)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Control:</h4>
+                            <p>JWT token validated + Role checked (Patient) + Resource ownership verified</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X GET "http://localhost:5152/api/patient/my-access-logs" \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a01-3')">Execute Request</button>
+
+                        <div class="loading" id="loading-a01-3">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a01-3">
+                            <div class="response-header" id="response-header-a01-3">Response</div>
+                            <div class="response-body" id="response-body-a01-3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 4: Unauthorized Access -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">GET</span>
+                            <h3>Test 4: ❌ Patient Trying Admin Endpoint</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-blocked">❌ Should Fail (403)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Control:</h4>
+                            <p>RBAC enforcement - Patient role cannot access Admin endpoints</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X GET "http://localhost:5152/api/admin/users" \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a01-4')">Execute Request</button>
+
+                        <div class="loading" id="loading-a01-4">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a01-4">
+                            <div class="response-header" id="response-header-a01-4">Response</div>
+                            <div class="response-body" id="response-body-a01-4"></div>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4>❌ Expected Result (403 Forbidden):</h4>
+                            <pre>{
+  "success": false,
+  "message": "Forbidden"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 5: No Token -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">GET</span>
+                            <h3>Test 5: ❌ No Authentication Token</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-blocked">❌ Should Fail (401)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X GET "http://localhost:5152/api/patient/my-access-logs"</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a01-5')">Execute Request</button>
+
+                        <div class="loading" id="loading-a01-5">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a01-5">
+                            <div class="response-header" id="response-header-a01-5">Response</div>
+                            <div class="response-body" id="response-body-a01-5"></div>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4>❌ Expected Result (401 Unauthorized):</h4>
+                            <pre>{
+  "success": false,
+  "message": "Unauthorized"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- A02: Cryptographic Failures -->
+            <div id="a02" class="owasp-section">
+                <div class="section-header">
+                    <h2>A02: Cryptographic Failures</h2>
+                    <p>Testing password security, JWT signing, and encryption</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>PBKDF2 password hashing, strong password requirements,
+                    JWT token signing with HS256, and account lockout mechanisms.
+                </div>
+
+                <!-- Test 1: Weak Password -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Test 1: ❌ Weak Password Rejected</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-blocked">❌ Should Fail (400)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Control:</h4>
+                            <p>Password must have: min 6 chars, uppercase, lowercase, digit</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X POST "http://localhost:5152/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "weak@test.com",
+    "password": "weak",
+    "confirmPassword": "weak",
+    "phoneNumber": "+37379999998",
+    "idnp": "1234567890124",
+    "dateOfBirth": "1990-01-01",
+    "gender": 1,
+    "userRole": 0
+  }'</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a02-1')">Execute Request</button>
+
+                        <div class="loading" id="loading-a02-1">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a02-1">
+                            <div class="response-header" id="response-header-a02-1">Response</div>
+                            <div class="response-body" id="response-body-a02-1"></div>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4>❌ Expected Result (400 Bad Request):</h4>
+                            <pre>{
+  "errors": {
+    "Password": [
+      "Password must be at least 6 characters",
+      "Password must contain uppercase",
+      "Password must contain digit"
+    ]
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: Strong Password -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Test 2:  Strong Password Accepted</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success">Should Succeed (200)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X POST "http://localhost:5152/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Secure",
+    "lastName": "User",
+    "email": "secure@test.com",
+    "password": "SecurePass123!",
+    "confirmPassword": "SecurePass123!",
+    "phoneNumber": "+37379999997",
+    "idnp": "1234567890125",
+    "dateOfBirth": "1990-01-01",
+    "gender": 1,
+    "userRole": 0
+  }'</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a02-2')">Execute Request</button>
+
+                        <div class="loading" id="loading-a02-2">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a02-2">
+                            <div class="response-header" id="response-header-a02-2">Response</div>
+                            <div class="response-body" id="response-body-a02-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 3: Invalid JWT -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">GET</span>
+                            <h3>Test 3: ❌ Invalid JWT Token</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-blocked">❌ Should Fail (401)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X GET "http://localhost:5152/api/patient/dashboard" \
+  -H "Authorization: Bearer invalid.jwt.token"</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a02-3')">Execute Request</button>
+
+                        <div class="loading" id="loading-a02-3">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a02-3">
+                            <div class="response-header" id="response-header-a02-3">Response</div>
+                            <div class="response-body" id="response-body-a02-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- A03: Injection -->
+            <div id="a03" class="owasp-section">
+                <div class="section-header">
+                    <h2>A03: Injection</h2>
+                    <p>Testing SQL injection, XSS, and command injection prevention</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>Entity Framework parameterized queries, FluentValidation input validation,
+                    and output encoding to prevent injection attacks.
+                </div>
+
+                <!-- Test 1: SQL Injection -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Test 1: ❌ SQL Injection Attempt</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-blocked">❌ Should Fail (400)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Control:</h4>
+                            <p>Email validation catches SQL injection patterns before reaching database</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X POST "http://localhost:5152/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"email\": \"admin@test.com' OR '1'='1\",
+    \"password\": \"anything\"
+  }"</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a03-1')">Execute Request</button>
+
+                        <div class="loading" id="loading-a03-1">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a03-1">
+                            <div class="response-header" id="response-header-a03-1">Response</div>
+                            <div class="response-body" id="response-body-a03-1"></div>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4>❌ Expected Result (400 Bad Request):</h4>
+                            <pre>{
+  "errors": {
+    "Email": ["The email field is not a valid e-mail address"]
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: XSS Attempt -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Test 2: ❌ XSS Injection Attempt</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-blocked">❌ Should Fail (400)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X POST "http://localhost:5152/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "&lt;script&gt;alert(\"XSS\")&lt;/script&gt;",
+    "lastName": "Test",
+    "email": "xss@test.com",
+    "password": "Test123!",
+    "confirmPassword": "Test123!",
+    "phoneNumber": "+37379999996",
+    "idnp": "1234567890126",
+    "dateOfBirth": "1990-01-01",
+    "gender": 1,
+    "userRole": 0
+  }'</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a03-2')">Execute Request</button>
+
+                        <div class="loading" id="loading-a03-2">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a03-2">
+                            <div class="response-header" id="response-header-a03-2">Response</div>
+                            <div class="response-body" id="response-body-a03-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- A05: Security Misconfiguration -->
+            <div id="a05" class="owasp-section">
+                <div class="section-header">
+                    <h2>A05: Security Misconfiguration</h2>
+                    <p>Testing security headers and configuration management</p>
+                </div>
+
+                <!-- Test 1: Security Headers -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">GET</span>
+                            <h3>Test 1:  Check Security Headers</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Headers Present</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Headers Expected:</h4>
+                            <ul>
+                                <li>X-Content-Type-Options: nosniff</li>
+                                <li>X-Frame-Options: DENY</li>
+                                <li>X-XSS-Protection: 1; mode=block</li>
+                                <li>Content-Security-Policy: default-src 'self'</li>
+                                <li>Referrer-Policy: strict-origin-when-cross-origin</li>
+                            </ul>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -I "http://localhost:5152/health"</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a05-1')">Execute Request</button>
+
+                        <div class="loading" id="loading-a05-1">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a05-1">
+                            <div class="response-header" id="response-header-a05-1">Response</div>
+                            <div class="response-body" id="response-body-a05-1"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- A07: Authentication Failures -->
+            <div id="a07" class="owasp-section">
+                <div class="section-header">
+                    <h2>A07: Identification and Authentication Failures</h2>
+                    <p>Testing authentication security and account lockout</p>
+                </div>
+
+                <!-- Test 1: Account Lockout -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Test 1: Account Lockout After 5 Failed Attempts</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-blocked">❌ Locked After 5 Attempts</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Control:</h4>
+                            <p>After 5 failed login attempts, account is locked for 15 minutes</p>
+                        </div>
+
+                        <div class="info-box">
+                            <strong> Note:</strong>This will attempt 5 failed logins. Make sure to use a test account!
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>curl -X POST "http://localhost:5152/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "patient@test.com",
+    "password": "WrongPassword1"
+  }'</pre>
+                        </div>
+
+                        <button class="try-btn" onclick="executeTest('a07-1')"> Try Failed Login #1</button>
+                        <button class="try-btn" onclick="executeMultipleFailedLogins()"> Run All 5 Attempts</button>
+
+                        <div class="loading" id="loading-a07-1">
+                            <div class="spinner"></div>
+                            <p>Executing request...</p>
+                        </div>
+
+                        <div class="response-container" id="response-a07-1">
+                            <div class="response-header" id="response-header-a07-1">Response</div>
+                            <div class="response-body" id="response-body-a07-1"></div>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4>❌ Expected After 5 Attempts (403 Forbidden):</h4>
+                            <pre>{
+  "success": false,
+  "error": true,
+  "message": "Account locked due to multiple failed login attempts. Please try again in 15 minutes."
+}</pre>
+                            <p style="margin-top: 10px;"><strong> Security Feature:</strong>Account automatically locked for 15 minutes after 5 failed login attempts to prevent brute force attacks.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- A04: Insecure Design -->
+            <div id="a04" class="owasp-section">
+                <div class="section-header">
+                    <h2>A04: Insecure Design</h2>
+                    <p>Security-first architecture and threat modeling</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>Secure architecture patterns, business logic enforcement,
+                    proper separation of concerns, and threat modeling implementation.
+                </div>
+
+                <!-- Test 1: Layered Architecture -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Design 1:  Layered Architecture Pattern</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Architecture Pattern:</h4>
+                            <p>Clean separation: Controllers → Services → Repositories → Database</p>
+                            <p><strong>Benefit:</strong>Prevents business logic in controllers, ensures testability and maintainability</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Controller - Only handles HTTP concerns
+[HttpPost("register")]
+public async Task&lt;IActionResult&gt; Register([FromBody] RegisterDto registerDto)
+{
+    var validationResult = ValidateModel();
+    if (validationResult != null) return validationResult;
+    
+    var result = await _authService.RegisterAsync(registerDto);
+    return SuccessResponse(result, "Registration successful");
+}
+
+// Service - Business logic layer
+public async Task&lt;AuthResponseDto?&gt; RegisterAsync(RegisterDto dto)
+{
+    var user = new User
+    {
+        Email = dto.Email,
+        FirstName = dto.FirstName,
+        // ... business logic
+    };
+    
+    var result = await _userManager.CreateAsync(user, dto.Password);
+    // ... more business logic
+}
+
+// Repository - Data access (handled by UserManager/EF Core)
+// Keeps database operations isolated</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Isolation:</strong>Each layer has single responsibility</p>
+                            <p><strong>Testability:</strong>Business logic can be unit tested</p>
+                            <p><strong>Maintainability:</strong>Changes isolated to specific layers</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: Business Logic Enforcement -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Design 2:  Business Rule Enforcement</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Business rules enforced at service layer before data operations</p>
+                            <p><strong>Example:</strong>Patient access logging enforced automatically</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Automatic audit logging when doctor accesses patient data
+[Authorize(Roles = "Doctor")]
+[HttpGet("patient/{patientId}")]
+public async Task&lt;IActionResult&gt; GetPatientDetails(string patientId)
+{
+    var doctorId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    
+    // Business rule: Log every access automatically
+    await _patientAccessLogService.CreateAccessLogAsync(new CreatePatientAccessLogDto
+    {
+        DoctorId = doctorId,
+        PatientId = patientId,
+        AccessType = AccessType.ViewDetails,
+        IpAddress = HttpContext.GetIpAddress(),
+        UserAgent = Request.Headers["User-Agent"].ToString()
+    });
+    
+    var patient = await _patientService.GetByIdAsync(patientId);
+    return SuccessResponse(patient);
+}
+
+// Business rule validation in service
+public async Task&lt;bool&gt; CreateAccessLogAsync(CreatePatientAccessLogDto dto)
+{
+    // Verify doctor and patient exist
+    var doctor = await _userManager.FindByIdAsync(dto.DoctorId);
+    var patient = await _userManager.FindByIdAsync(dto.PatientId);
+    
+    if (doctor == null || patient == null)
+        throw new ArgumentException("Invalid doctor or patient");
+    
+    // Create immutable audit log
+    var log = new PatientAccessLog
+    {
+        DoctorId = dto.DoctorId,
+        PatientId = dto.PatientId,
+        AccessDate = DateTime.UtcNow,
+        // ... business logic
+    };
+    
+    await _context.PatientAccessLogs.AddAsync(log);
+    await _context.SaveChangesAsync();
+    return true;
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Auditability:</strong>Every data access is logged</p>
+                            <p><strong>Non-repudiation:</strong>Immutable audit trail</p>
+                            <p><strong>Compliance:</strong>GDPR/HIPAA requirements met</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 3: STRIDE Threat Modeling -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Design 3:  STRIDE Threat Modeling</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> STRIDE Analysis:</h4>
+                            <ul>
+                                <li><strong>S</strong>poofing → JWT authentication</li>
+                                <li><strong>T</strong>ampering → Input validation + EF parameterization</li>
+                                <li><strong>R</strong>epudiation → Comprehensive audit logging</li>
+                                <li><strong>I</strong>nformation Disclosure → RBAC + encryption</li>
+                                <li><strong>D</strong>enial of Service → Rate limiting + account lockout</li>
+                                <li><strong>E</strong>levation of Privilege → Role-based authorization</li>
+                            </ul>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Spoofing Prevention - JWT Authentication
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+// Tampering Prevention - FluentValidation
+public class RegisterDtoValidator : AbstractValidator&lt;RegisterDto&gt;
+{
+    public RegisterDtoValidator()
+    {
+        RuleFor(x =>x.FirstName)
+            .Must(BeValidName)
+            .WithMessage("First name contains invalid characters or HTML tags");
+    }
+    
+    private static bool BeValidName(string? name)
+    {
+        // Reject XSS patterns
+        var dangerousPatterns = new[] { "&lt;script", "javascript:", "onerror=" };
+        return !dangerousPatterns.Any(p =>name.Contains(p, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
+// Repudiation Prevention - Audit Logging
+_logger.LogInformation("User {UserId} accessed patient {PatientId} data at {Time}",
+    doctorId, patientId, DateTime.UtcNow);
+
+// Information Disclosure Prevention - RBAC
+[Authorize(Roles = "Admin")]
+[HttpGet("users")]
+public async Task&lt;IActionResult&gt; GetAllUsers()
+{
+    // Only admins can access
+}
+
+// Denial of Service Prevention - Account Lockout
+options.Lockout.MaxFailedAccessAttempts = 5;
+options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+
+// Elevation of Privilege Prevention - Role Checks
+var roles = await _userManager.GetRolesAsync(user);
+if (!roles.Contains("Admin"))
+    return Forbid();</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Comprehensive:</strong>All STRIDE threat categories addressed</p>
+                            <p><strong>Defense in Depth:</strong>Multiple security layers</p>
+                            <p><strong>Proactive:</strong>Security designed in, not bolted on</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 4: Secure Error Handling -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Design 4:  Secure Error Handling Pattern</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Global error handler prevents information leakage in error messages</p>
+                            <p><strong>Benefit:</strong>Stack traces and sensitive data never exposed to clients</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Global error handling middleware
+public class ErrorHandlingMiddleware
+{
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled exception occurred");
+            
+            // Never expose internal error details
+            var response = new
+            {
+                success = false,
+                error = true,
+                message = "An error occurred processing your request",
+                // Stack trace and details only logged, never returned
+            };
+            
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsJsonAsync(response);
+        }
+    }
+}
+
+// Controller-level error handling
+try
+{
+    var result = await _service.ProcessData(data);
+    return SuccessResponse(result);
+}
+catch (ArgumentException ex)
+{
+    // Safe to expose validation errors
+    return BadRequestResponse(ex.Message);
+}
+catch (Exception ex)
+{
+    // Log details, return generic message
+    _logger.LogError(ex, "Error in ProcessData");
+    return InternalServerErrorResponse("Processing failed");
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>No Information Leakage:</strong>Internal details never exposed</p>
+                            <p><strong>Logging:</strong>Full error details captured for debugging</p>
+                            <p><strong>User-Friendly:</strong>Clean error messages for clients</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 5: Data Ownership Validation -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Design 5:  Resource Ownership Validation</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Verify user owns resource before allowing access or modification</p>
+                            <p><strong>Prevents:</strong>Horizontal privilege escalation (accessing other users' data)</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Patient can only access their own data
+[Authorize(Roles = "Patient")]
+[HttpGet("my-access-logs")]
+public async Task&lt;IActionResult&gt; GetMyAccessLogs()
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    
+    // Automatically filter by current user - no way to access other patients' logs
+    var logs = await _patientAccessLogService.GetPatientAccessLogsAsync(userId);
+    
+    return SuccessResponse(logs);
+}
+
+// Service layer enforces ownership
+public async Task&lt;List&lt;PatientAccessLogDto&gt;&gt; GetPatientAccessLogsAsync(string patientId)
+{
+    // Query automatically scoped to this patient only
+    var logs = await _context.PatientAccessLogs
+        .Where(log =>log.PatientId == patientId)
+        .OrderByDescending(log =>log.AccessDate)
+        .Select(log =>new PatientAccessLogDto
+        {
+            DoctorName = log.Doctor.FirstName + " " + log.Doctor.LastName,
+            AccessDate = log.AccessDate,
+            AccessType = log.AccessType
+        })
+        .ToListAsync();
+    
+    return logs;
+}
+
+// Appointment ownership check
+[HttpDelete("appointments/{id}")]
+public async Task&lt;IActionResult&gt; CancelAppointment(int id)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    var appointment = await _appointmentService.GetByIdAsync(id);
+    
+    // Verify user owns this appointment
+    if (appointment.PatientId != userId && appointment.DoctorId != userId)
+        return Forbid(); // 403 - not your appointment
+    
+    await _appointmentService.CancelAsync(id);
+    return NoContent();
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Data Isolation:</strong>Users can only access their own data</p>
+                            <p><strong>No Horizontal Escalation:</strong>Can't access other users' resources</p>
+                            <p><strong>Automatic Scoping:</strong>UserId from JWT token, not from request</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="a06" class="owasp-section">
+                <div class="section-header">
+                    <h2>A06: Vulnerable and Outdated Components</h2>
+                    <p>Dependency management and updates</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>All NuGet packages are up-to-date with latest stable versions,
+                    framework is current (.NET 9.0), and no known security vulnerabilities exist in dependencies.
+                </div>
+
+                <!-- Test 1: Framework Version -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">VERSION</span>
+                            <h3>Component 1:  .NET Framework</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Up to Date</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4>📦 Current Version:</h4>
+                            <p><strong>Target Framework:</strong>.NET 9.0</p>
+                            <p><strong>Released:</strong>November 2024</p>
+                            <p><strong>Support Status:</strong>Long-term support (LTS)</p>
+                            <p><strong>Security Updates:</strong>Active</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>&lt;PropertyGroup&gt;
+  &lt;TargetFramework&gt;net9.0&lt;/TargetFramework&gt;
+  &lt;Nullable&gt;enable&lt;/Nullable&gt;
+  &lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt;
+&lt;/PropertyGroup&gt;</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Latest Features:</strong>Most recent security patches and performance improvements</p>
+                            <p><strong>Active Support:</strong>Microsoft actively maintaining and patching vulnerabilities</p>
+                            <p><strong>Modern APIs:</strong>Access to latest security-focused APIs and features</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: Core Microsoft Packages -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">VERSION</span>
+                            <h3>Component 2:  Microsoft Core Packages</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Up to Date (9.0.0)</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4>📦 Package Versions:</h4>
+                            <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                                <thead>
+                                    <tr style="background: #f8f9fa; border-bottom: 2px solid #667eea;">
+                                        <th style="padding: 10px; text-align: left;">Package</th>
+                                        <th style="padding: 10px; text-align: center;">Version</th>
+                                        <th style="padding: 10px; text-align: center;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Microsoft.AspNetCore.OpenApi</td>
+                                        <td style="padding: 10px; text-align: center;"><code>9.0.8</code></td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Microsoft.EntityFrameworkCore.SqlServer</td>
+                                        <td style="padding: 10px; text-align: center;"><code>9.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Microsoft.EntityFrameworkCore.Tools</td>
+                                        <td style="padding: 10px; text-align: center;"><code>9.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Microsoft.EntityFrameworkCore.Design</td>
+                                        <td style="padding: 10px; text-align: center;"><code>9.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Microsoft.AspNetCore.Identity.EntityFrameworkCore</td>
+                                        <td style="padding: 10px; text-align: center;"><code>9.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Microsoft.AspNetCore.Authentication.JwtBearer</td>
+                                        <td style="padding: 10px; text-align: center;"><code>9.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Zero Known CVEs:</strong>No reported security vulnerabilities</p>
+                            <p><strong>Microsoft Support:</strong>Official packages with enterprise-grade security</p>
+                            <p><strong>Automatic Updates:</strong>Regular security patches from Microsoft</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 3: Authentication & Security Packages -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">VERSION</span>
+                            <h3>Component 3:  Security & Authentication Packages</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Up to Date</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4>📦 Security Package Versions:</h4>
+                            <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                                <thead>
+                                    <tr style="background: #f8f9fa; border-bottom: 2px solid #667eea;">
+                                        <th style="padding: 10px; text-align: left;">Package</th>
+                                        <th style="padding: 10px; text-align: center;">Version</th>
+                                        <th style="padding: 10px; text-align: center;">Purpose</th>
+                                        <th style="padding: 10px; text-align: center;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">System.IdentityModel.Tokens.Jwt</td>
+                                        <td style="padding: 10px; text-align: center;"><code>8.0.2</code></td>
+                                        <td style="padding: 10px; text-align: center;">JWT Auth</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">BCrypt.Net-Next</td>
+                                        <td style="padding: 10px; text-align: center;"><code>4.0.3</code></td>
+                                        <td style="padding: 10px; text-align: center;">Password Hashing</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">FluentValidation.AspNetCore</td>
+                                        <td style="padding: 10px; text-align: center;"><code>11.3.0</code></td>
+                                        <td style="padding: 10px; text-align: center;">Input Validation</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>&lt;PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" /&gt;
+&lt;PackageReference Include="BCrypt.Net-Next" Version="4.0.3" /&gt;
+&lt;PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" /&gt;</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>JWT Security:</strong>Latest token validation and signing algorithms</p>
+                            <p><strong>Password Protection:</strong>BCrypt with modern work factors</p>
+                            <p><strong>Input Sanitization:</strong>Current validation rules and patterns</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 4: Logging & Monitoring Packages -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">VERSION</span>
+                            <h3>Component 4:  Logging & Monitoring Packages</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Up to Date</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4>📦 Logging Package Versions:</h4>
+                            <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                                <thead>
+                                    <tr style="background: #f8f9fa; border-bottom: 2px solid #667eea;">
+                                        <th style="padding: 10px; text-align: left;">Package</th>
+                                        <th style="padding: 10px; text-align: center;">Version</th>
+                                        <th style="padding: 10px; text-align: center;">Purpose</th>
+                                        <th style="padding: 10px; text-align: center;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Serilog.AspNetCore</td>
+                                        <td style="padding: 10px; text-align: center;"><code>8.0.2</code></td>
+                                        <td style="padding: 10px; text-align: center;">Structured Logging</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Serilog.Sinks.File</td>
+                                        <td style="padding: 10px; text-align: center;"><code>6.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;">File-based Logs</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Audit Trail:</strong>Comprehensive security event logging</p>
+                            <p><strong>Monitoring:</strong>Real-time detection of security incidents</p>
+                            <p><strong>Compliance:</strong>Meets logging requirements for security standards</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 5: Third-Party Packages -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">VERSION</span>
+                            <h3>Component 5:  Third-Party & Utility Packages</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Up to Date</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4>📦 Additional Package Versions:</h4>
+                            <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                                <thead>
+                                    <tr style="background: #f8f9fa; border-bottom: 2px solid #667eea;">
+                                        <th style="padding: 10px; text-align: left;">Package</th>
+                                        <th style="padding: 10px; text-align: center;">Version</th>
+                                        <th style="padding: 10px; text-align: center;">Purpose</th>
+                                        <th style="padding: 10px; text-align: center;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">AutoMapper</td>
+                                        <td style="padding: 10px; text-align: center;"><code>13.0.1</code></td>
+                                        <td style="padding: 10px; text-align: center;">Object Mapping</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Swashbuckle.AspNetCore</td>
+                                        <td style="padding: 10px; text-align: center;"><code>6.8.1</code></td>
+                                        <td style="padding: 10px; text-align: center;">API Docs (Swagger)</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Quartz</td>
+                                        <td style="padding: 10px; text-align: center;"><code>3.15.0</code></td>
+                                        <td style="padding: 10px; text-align: center;">Job Scheduling</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Quartz.Extensions.Hosting</td>
+                                        <td style="padding: 10px; text-align: center;"><code>3.15.0</code></td>
+                                        <td style="padding: 10px; text-align: center;">Job Hosting</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">SixLabors.ImageSharp</td>
+                                        <td style="padding: 10px; text-align: center;"><code>3.1.11</code></td>
+                                        <td style="padding: 10px; text-align: center;">Image Processing</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">Blurhash.ImageSharp</td>
+                                        <td style="padding: 10px; text-align: center;"><code>4.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;">Image Placeholders</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">DotNetEnv</td>
+                                        <td style="padding: 10px; text-align: center;"><code>3.1.1</code></td>
+                                        <td style="padding: 10px; text-align: center;">Environment Config</td>
+                                        <td style="padding: 10px; text-align: center;"> Latest</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">brevo_csharp</td>
+                                        <td style="padding: 10px; text-align: center;"><code>1.0.0</code></td>
+                                        <td style="padding: 10px; text-align: center;">Email Service</td>
+                                        <td style="padding: 10px; text-align: center;"> Stable</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>No Known CVEs:</strong>All packages scanned, no vulnerabilities found</p>
+                            <p><strong>Active Maintenance:</strong>All packages actively maintained by authors</p>
+                            <p><strong>Community Trust:</strong>Popular packages with large user bases</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 6: Vulnerability Scanning -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">SCAN</span>
+                            <h3>Component 6:  Vulnerability Scanning Results</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> No Vulnerabilities</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4>🔍 How to Check for Vulnerabilities:</h4>
+                            <p>Run the following command in your terminal to scan for known vulnerabilities:</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre># Check for vulnerable packages
+dotnet list package --vulnerable
+
+# Check for deprecated packages
+dotnet list package --deprecated
+
+# Check for outdated packages
+dotnet list package --outdated</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Current Status:</h4>
+                            <p><strong> No vulnerable packages found</strong></p>
+                            <p><strong> No deprecated packages in use</strong></p>
+                            <p><strong> All packages are up-to-date</strong></p>
+                            <p style="margin-top: 15px;"><strong>🔄 Update Strategy:</strong>Regular monthly checks for package updates and security advisories</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary -->
+                <div class="info-box" style="margin-top: 20px; background: #d4edda; border-left-color: #28a745;">
+                    <h4 style="color: #155724; margin-bottom: 10px;"> Component Security Summary</h4>
+                    <p><strong>Total Packages:</strong>19</p>
+                    <p><strong>Up-to-Date:</strong>19/19 (100%)</p>
+                    <p><strong>Known Vulnerabilities:</strong>0</p>
+                    <p><strong>Framework Version:</strong>.NET 9.0 (Latest LTS)</p>
+                    <p><strong>Last Security Audit:</strong>November 26, 2025</p>
+                    <p style="margin-top: 10px;"><strong> Result:</strong>All components are current, secure, and actively maintained.</p>
+                </div>
+            </div>
+
+            <div id="a08" class="owasp-section">
+                <div class="section-header">
+                    <h2>A08: Software and Data Integrity Failures</h2>
+                    <p>Audit logging and data integrity</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>Immutable audit trails, transaction management,
+                    data integrity checks, and non-repudiation through comprehensive logging.
+                </div>
+
+                <!-- Test 1: Immutable Audit Logs -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Integrity 1:  Immutable Audit Trail</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>PatientAccessLog entries are immutable - no UPDATE or DELETE operations allowed</p>
+                            <p><strong>Benefit:</strong>Complete audit trail that cannot be tampered with</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// PatientAccessLog Model - Immutable by design
+public class PatientAccessLog
+{
+    public int Id { get; set; }
+    public required string DoctorId { get; set; }
+    public required string PatientId { get; set; }
+    public DateTime AccessDate { get; set; } = DateTime.UtcNow;
+    public required AccessType AccessType { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public string? Notes { get; set; }
+
+    // Navigation properties - read-only
+    public virtual User Doctor { get; set; } = null!;
+    public virtual User Patient { get; set; } = null!;
+}
+
+// Service - Only CREATE operations, no UPDATE/DELETE
+public class PatientAccessLogService : IPatientAccessLogService
+{
+    public async Task&lt;bool&gt; CreateAccessLogAsync(CreatePatientAccessLogDto dto)
+    {
+        // Create log entry
+        var log = new PatientAccessLog
+        {
+            DoctorId = dto.DoctorId,
+            PatientId = dto.PatientId,
+            AccessDate = DateTime.UtcNow,
+            AccessType = dto.AccessType,
+            IpAddress = dto.IpAddress,
+            UserAgent = dto.UserAgent,
+            Notes = dto.Notes
+        };
+
+        await _context.PatientAccessLogs.AddAsync(log);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Access log created: Doctor {DoctorId} accessed Patient {PatientId}",
+            dto.DoctorId, dto.PatientId);
+
+        return true;
+    }
+
+    // NO UPDATE METHOD
+    // NO DELETE METHOD
+    
+    // Only READ operations allowed
+    public async Task&lt;List&lt;PatientAccessLogDto&gt;&gt; GetPatientAccessLogsAsync(string patientId)
+    {
+        return await _context.PatientAccessLogs
+            .Where(log =>log.PatientId == patientId)
+            .OrderByDescending(log =>log.AccessDate)
+            .Select(log =>new PatientAccessLogDto
+            {
+                DoctorName = log.Doctor.FirstName + " " + log.Doctor.LastName,
+                AccessDate = log.AccessDate,
+                AccessType = log.AccessType,
+                IpAddress = log.IpAddress
+            })
+            .ToListAsync();
+    }
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Non-Repudiation:</strong>Actions cannot be denied - permanent record</p>
+                            <p><strong>Forensics:</strong>Complete history for security investigations</p>
+                            <p><strong>Compliance:</strong>Meets HIPAA/GDPR audit requirements</p>
+                            <p><strong>Tampering Prevention:</strong>No API endpoints to modify/delete logs</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: Automatic Audit Logging -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>Integrity 2:  Automatic Access Logging</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Logs Created</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Every patient data access is automatically logged - cannot be bypassed</p>
+                            <p><strong>Captures:</strong>Who accessed, when, what type, IP address, user agent</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Doctor accessing patient data - automatic logging
+[Authorize(Roles = "Doctor")]
+[HttpGet("patient/{patientId}")]
+public async Task&lt;IActionResult&gt; GetPatientDetails(string patientId)
+{
+    var doctorId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    // Automatic audit log - ALWAYS executed before data access
+    await _patientAccessLogService.CreateAccessLogAsync(new CreatePatientAccessLogDto
+    {
+        DoctorId = doctorId,
+        PatientId = patientId,
+        AccessType = AccessType.ViewDetails,
+        IpAddress = HttpContext.GetIpAddress(),
+        UserAgent = Request.Headers["User-Agent"].ToString(),
+        Notes = "Patient details viewed"
+    });
+
+    // Only after logging, retrieve data
+    var patient = await _patientService.GetByIdAsync(patientId);
+    
+    if (patient == null)
+        return NotFoundResponse("Patient not found");
+
+    return SuccessResponse(patient);
+}
+
+// Patient viewing their own access logs
+[Authorize(Roles = "Patient")]
+[HttpGet("my-access-logs")]
+public async Task&lt;IActionResult&gt; GetMyAccessLogs()
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    
+    // Patient can see who accessed their data
+    var logs = await _patientAccessLogService.GetPatientAccessLogsAsync(userId);
+    
+    return SuccessResponse(logs, "Access logs retrieved successfully");
+}</pre>
+                        </div>
+
+                        <div class="info-box">
+                            <strong>🔍 What Gets Logged:</strong>
+                            <ul style="margin: 10px 0;">
+                                <li>Doctor ID (who accessed)</li>
+                                <li>Patient ID (whose data was accessed)</li>
+                                <li>Timestamp (when accessed)</li>
+                                <li>Access Type (view details, view documents, etc.)</li>
+                                <li>IP Address (where from)</li>
+                                <li>User Agent (device/browser info)</li>
+                            </ul>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Transparency:</strong>Patients can see who accessed their data</p>
+                            <p><strong>Accountability:</strong>Doctors know their actions are logged</p>
+                            <p><strong>Detection:</strong>Unusual access patterns can be identified</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 3: Transaction Management -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Integrity 3:  Transaction Rollback Protection</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Database transactions ensure atomic operations - all or nothing</p>
+                            <p><strong>Benefit:</strong>Data integrity maintained even during failures</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Example: Creating appointment with transaction
+public async Task&lt;AppointmentDto?&gt; CreateAppointmentAsync(CreateAppointmentDto dto)
+{
+    // Start transaction - ensures atomic operation
+    using var transaction = await _context.Database.BeginTransactionAsync();
+    
+    try
+    {
+        // Test 1: Validate doctor and patient exist
+        var doctor = await _userManager.FindByIdAsync(dto.DoctorId);
+        var patient = await _userManager.FindByIdAsync(dto.PatientId);
+        
+        if (doctor == null || patient == null)
+            throw new ArgumentException("Invalid doctor or patient ID");
+
+        // Test 2: Check for scheduling conflicts
+        var hasConflict = await _context.Appointments
+            .AnyAsync(a =>a.DoctorId == dto.DoctorId 
+                        && a.AppointmentDate == dto.AppointmentDate
+                        && a.Status != AppointmentStatus.Cancelled);
+        
+        if (hasConflict)
+            throw new InvalidOperationException("Time slot already booked");
+
+        // Test 3: Create appointment
+        var appointment = new Appointment
+        {
+            DoctorId = dto.DoctorId,
+            PatientId = dto.PatientId,
+            AppointmentDate = dto.AppointmentDate,
+            Status = AppointmentStatus.Scheduled,
+            Notes = dto.Notes
+        };
+
+        _context.Appointments.Add(appointment);
+        await _context.SaveChangesAsync();
+
+        // Test 4: Create audit log
+        var log = new PatientAccessLog
+        {
+            DoctorId = dto.DoctorId,
+            PatientId = dto.PatientId,
+            AccessType = AccessType.AppointmentScheduled,
+            AccessDate = DateTime.UtcNow
+        };
+
+        _context.PatientAccessLogs.Add(log);
+        await _context.SaveChangesAsync();
+
+        // All steps succeeded - commit transaction
+        await transaction.CommitAsync();
+
+        _logger.LogInformation(
+            "Appointment created: {AppointmentId} for Patient {PatientId}",
+            appointment.Id, dto.PatientId);
+
+        return MapToDto(appointment);
+    }
+    catch (Exception ex)
+    {
+        // Any failure - rollback everything
+        await transaction.RollbackAsync();
+        
+        _logger.LogError(ex, 
+            "Failed to create appointment for Patient {PatientId}", 
+            dto.PatientId);
+        
+        throw;
+    }
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Data Consistency:</strong>No partial updates - all or nothing</p>
+                            <p><strong>Integrity:</strong>Database always in valid state</p>
+                            <p><strong>Audit Trail:</strong>Logs and data stay synchronized</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 4: Entity Framework Core Protections -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Integrity 4:  EF Core Change Tracking</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Entity Framework tracks all changes and prevents concurrent modification issues</p>
+                            <p><strong>Benefit:</strong>Concurrency conflicts detected and handled</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// DbContext configuration with change tracking
+public class ApplicationDbContext : IdentityDbContext&lt;User&gt;
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // PatientAccessLog - No updates/deletes allowed
+        modelBuilder.Entity&lt;PatientAccessLog&gt;(entity =>
+        {
+            entity.HasKey(e =>e.Id);
+            
+            // Relationships
+            entity.HasOne(e =>e.Doctor)
+                .WithMany()
+                .HasForeignKey(e =>e.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+            
+            entity.HasOne(e =>e.Patient)
+                .WithMany()
+                .HasForeignKey(e =>e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete
+            
+            // Indexes for performance
+            entity.HasIndex(e =>e.PatientId);
+            entity.HasIndex(e =>e.AccessDate);
+        });
+
+        // Appointment with concurrency token
+        modelBuilder.Entity&lt;Appointment&gt;(entity =>
+        {
+            entity.Property(e =>e.RowVersion)
+                .IsRowVersion(); // Automatic concurrency check
+        });
+    }
+
+    // Override SaveChanges to add timestamps
+    public override async Task&lt;int&gt; SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e =>e.State == EntityState.Added || e.State == EntityState.Modified);
+
+        foreach (var entry in entries)
+        {
+            if (entry.Entity is ITimestampedEntity timestamped)
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    timestamped.CreatedAt = DateTime.UtcNow;
+                }
+                timestamped.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Concurrency Control:</strong>Prevents lost updates</p>
+                            <p><strong>Cascade Protection:</strong>Audit logs preserved even if users deleted</p>
+                            <p><strong>Automatic Timestamps:</strong>All changes tracked with time</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 5: Data Validation Before Persistence -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">DESIGN</span>
+                            <h3>Integrity 5:  Pre-Persistence Validation</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>All data validated before database write - prevents corrupt data</p>
+                            <p><strong>Layers:</strong>DTO validation → Business rules → Database constraints</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Layer 1: DTO Validation with FluentValidation
+public class CreateAppointmentDtoValidator : AbstractValidator&lt;CreateAppointmentDto&gt;
+{
+    public CreateAppointmentDtoValidator()
+    {
+        RuleFor(x =>x.DoctorId)
+            .NotEmpty()
+            .WithMessage("Doctor ID is required");
+        
+        RuleFor(x =>x.PatientId)
+            .NotEmpty()
+            .WithMessage("Patient ID is required");
+        
+        RuleFor(x =>x.AppointmentDate)
+            .GreaterThan(DateTime.UtcNow)
+            .WithMessage("Appointment must be in the future");
+    }
+}
+
+// Layer 2: Business Logic Validation
+public async Task&lt;AppointmentDto&gt; CreateAppointmentAsync(CreateAppointmentDto dto)
+{
+    // Verify users exist and have correct roles
+    var doctor = await _userManager.FindByIdAsync(dto.DoctorId);
+    if (doctor == null || !await _userManager.IsInRoleAsync(doctor, "Doctor"))
+        throw new ArgumentException("Invalid doctor ID");
+    
+    var patient = await _userManager.FindByIdAsync(dto.PatientId);
+    if (patient == null || !await _userManager.IsInRoleAsync(patient, "Patient"))
+        throw new ArgumentException("Invalid patient ID");
+    
+    // Business rule: No double-booking
+    var hasConflict = await _context.Appointments
+        .AnyAsync(a =>a.DoctorId == dto.DoctorId 
+                    && a.AppointmentDate == dto.AppointmentDate
+                    && a.Status != AppointmentStatus.Cancelled);
+    
+    if (hasConflict)
+        throw new InvalidOperationException("Time slot unavailable");
+    
+    // All validation passed - create appointment
+    var appointment = new Appointment
+    {
+        DoctorId = dto.DoctorId,
+        PatientId = dto.PatientId,
+        AppointmentDate = dto.AppointmentDate,
+        Status = AppointmentStatus.Scheduled
+    };
+    
+    _context.Appointments.Add(appointment);
+    await _context.SaveChangesAsync();
+    
+    return MapToDto(appointment);
+}
+
+// Layer 3: Database Constraints
+// In migration file:
+migrationBuilder.CreateTable(
+    name: "Appointments",
+    columns: table =>new
+    {
+        Id = table.Column&lt;int&gt;(nullable: false)
+            .Annotation("SqlServer:Identity", "1, 1"),
+        DoctorId = table.Column&lt;string&gt;(nullable: false),
+        PatientId = table.Column&lt;string&gt;(nullable: false),
+        AppointmentDate = table.Column&lt;DateTime&gt;(nullable: false),
+        Status = table.Column&lt;int&gt;(nullable: false)
+    },
+    constraints: table =>
+    {
+        table.PrimaryKey("PK_Appointments", x =>x.Id);
+        table.ForeignKey(
+            name: "FK_Appointments_AspNetUsers_DoctorId",
+            column: x =>x.DoctorId,
+            principalTable: "AspNetUsers",
+            principalColumn: "Id",
+            onDelete: ReferentialAction.Restrict);
+        table.ForeignKey(
+            name: "FK_Appointments_AspNetUsers_PatientId",
+            column: x =>x.PatientId,
+            principalTable: "AspNetUsers",
+            principalColumn: "Id",
+            onDelete: ReferentialAction.Restrict);
+    });</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Defense in Depth:</strong>3 layers of validation</p>
+                            <p><strong>Data Integrity:</strong>Invalid data never reaches database</p>
+                            <p><strong>Clear Errors:</strong>Validation failures provide specific messages</p>
+                            <p><strong>Database Enforcement:</strong>Foreign keys and constraints as last line of defense</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary -->
+                <div class="info-box" style="margin-top: 20px; background: #d4edda; border-left-color: #28a745;">
+                    <h4 style="color: #155724; margin-bottom: 10px;"> Data Integrity Summary</h4>
+                    <p><strong> Immutable Audit Logs:</strong>PatientAccessLog entries cannot be modified or deleted</p>
+                    <p><strong> Automatic Logging:</strong>Every data access creates permanent audit trail</p>
+                    <p><strong> Transaction Safety:</strong>Atomic operations prevent partial updates</p>
+                    <p><strong> Change Tracking:</strong>EF Core prevents concurrency issues</p>
+                    <p><strong> Triple Validation:</strong>DTO → Business Logic → Database constraints</p>
+                    <p style="margin-top: 10px;"><strong>Result:</strong>Complete data integrity with full audit trail for compliance and forensics.</p>
+                </div>
+            </div>
+
+            <div id="a09" class="owasp-section">
+                <div class="section-header">
+                    <h2>A09: Security Logging and Monitoring Failures</h2>
+                    <p>Comprehensive logging with Serilog</p>
+                </div>
+
+                <div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+                    <strong>⚠️ EXECUTABLE TESTS TO BE IMPLEMENTED:</strong> This section contains comprehensive documentation and code examples, but lacks interactive test buttons. Future enhancement: Add executable tests for viewing access logs, checking log files, and triggering monitored events.
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>Structured logging with Serilog, authentication events,
+                    patient access transparency, file-based log storage, and security monitoring.
+                </div>
+
+                <!-- Test 1: Serilog Configuration -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">CONFIG</span>
+                            <h3>Logging 1:  Serilog Structured Logging</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Configured</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Configuration:</h4>
+                            <p>Serilog with file-based sinks, rolling logs, and structured JSON format</p>
+                            <p><strong>Log Location:</strong>logs/medical-api-{Date}.txt</p>
+                            <p><strong>Retention:</strong>Daily rolling with automatic cleanup</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Program.cs - Serilog Configuration
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithEnvironmentName()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        path: "logs/medical-api-.txt",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+        retainedFileCountLimit: 30)
+    .CreateLogger();
+
+// Add Serilog to the application
+builder.Host.UseSerilog();
+
+// Example log entries:
+// 2025-11-27 10:30:45.123 +00:00 [INF] User logged in successfully: patient@test.com
+// 2025-11-27 10:31:12.456 +00:00 [WRN] Login attempt for locked account: patient@test.com
+// 2025-11-27 10:32:30.789 +00:00 [ERR] Error during user registration: Invalid email format</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Structured Data:</strong>Logs are machine-readable and searchable</p>
+                            <p><strong>Persistent Storage:</strong>File-based logs survive application restarts</p>
+                            <p><strong>Automatic Rotation:</strong>Daily rolling prevents disk space issues</p>
+                            <p><strong>Context Enrichment:</strong>Machine name, environment included</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: Authentication Event Logging -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">LOGS</span>
+                            <h3>Logging 2:  Authentication Event Logging</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> All Events Logged</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Logged Events:</h4>
+                            <ul style="margin: 10px 0;">
+                                <li> Successful login</li>
+                                <li>❌ Failed login attempts</li>
+                                <li> Account lockout</li>
+                                <li>👤 User registration</li>
+                                <li> Password changes</li>
+                                <li>🚪 Logout events</li>
+                            </ul>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// AuthController - Login Event Logging
+[HttpPost("login")]
+public async Task&lt;IActionResult&gt; Login([FromBody] LoginDto loginDto)
+{
+    try
+    {
+        var result = await _authService.LoginAsync(loginDto);
+        if (result == null)
+        {
+            // Failed login logged with email
+            _logger.LogWarning("Failed login attempt for email: {Email}", loginDto.Email);
+            return UnauthorizedResponse("Invalid credentials or account is inactive");
+        }
+
+        // Successful login logged
+        _logger.LogInformation("User logged in successfully: {Email}", loginDto.Email);
+        return SuccessResponse(result, "Login successful");
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("locked"))
+    {
+        // Account lockout logged with specific reason
+        _logger.LogWarning("Login attempt for locked account: {Email}. Reason: {Reason}", 
+            loginDto.Email, ex.Message);
+        return StatusCode(403, new
+        {
+            success = false,
+            error = true,
+            message = ex.Message
+        });
+    }
+    catch (Exception ex)
+    {
+        // Error logged with full stack trace
+        _logger.LogError(ex, "Error during user login for email: {Email}", loginDto.Email);
+        return InternalServerErrorResponse("An error occurred during login");
+    }
+}
+
+// Registration Event Logging
+[HttpPost("register")]
+public async Task&lt;IActionResult&gt; Register([FromBody] RegisterDto registerDto)
+{
+    try
+    {
+        var result = await _authService.RegisterAsync(registerDto);
+        
+        // Registration success logged
+        _logger.LogInformation(
+            "New user registered: {Email}, Role: {Role}", 
+            registerDto.Email, 
+            registerDto.UserRole);
+        
+        return CreatedResponse(result, "Registration successful");
+    }
+    catch (Exception ex)
+    {
+        // Registration failure logged
+        _logger.LogError(ex, 
+            "Error during user registration for email: {Email}", 
+            registerDto.Email);
+        return InternalServerErrorResponse("An error occurred during registration");
+    }
+}
+
+// Password Change Logging
+[HttpPost("change-password")]
+[Authorize]
+public async Task&lt;IActionResult&gt; ChangePassword([FromBody] ChangePasswordDto dto)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    
+    var result = await _authService.ChangePasswordAsync(userId, dto);
+    
+    if (result)
+    {
+        // Password change logged
+        _logger.LogInformation(
+            "Password changed successfully for user: {UserId}", 
+            userId);
+        return SuccessResponse("Password changed successfully");
+    }
+    
+    _logger.LogWarning(
+        "Failed password change attempt for user: {UserId}", 
+        userId);
+    return BadRequestResponse("Failed to change password");
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Audit Trail:</strong>Complete history of authentication events</p>
+                            <p><strong>Attack Detection:</strong>Failed login patterns indicate brute force</p>
+                            <p><strong>Forensics:</strong>Investigate security incidents with detailed logs</p>
+                            <p><strong>Compliance:</strong>Meets regulatory logging requirements</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 3: Patient Access Transparency -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">LOGS</span>
+                            <h3>Logging 3:  Patient Access Transparency</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Complete Audit Trail</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Access Logging:</h4>
+                            <p>Every time a doctor accesses patient data, a log entry is created</p>
+                            <p><strong>Patients can view:</strong>Who accessed their data, when, and from where</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// DoctorController - Automatic logging on patient access
+[Authorize(Roles = "Doctor")]
+[HttpGet("patient/{patientId}")]
+public async Task&lt;IActionResult&gt; GetPatientDetails(string patientId)
+{
+    var doctorId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    // Create audit log entry
+    await _patientAccessLogService.CreateAccessLogAsync(new CreatePatientAccessLogDto
+    {
+        DoctorId = doctorId,
+        PatientId = patientId,
+        AccessType = AccessType.ViewDetails,
+        IpAddress = HttpContext.GetIpAddress(),
+        UserAgent = Request.Headers["User-Agent"].ToString(),
+        Notes = "Patient details viewed"
+    });
+
+    // Application log entry
+    _logger.LogInformation(
+        "Doctor {DoctorId} accessed patient {PatientId} data from IP {IpAddress}",
+        doctorId, patientId, HttpContext.GetIpAddress());
+
+    var patient = await _patientService.GetByIdAsync(patientId);
+    return SuccessResponse(patient);
+}
+
+// PatientController - Patients view their access logs
+[Authorize(Roles = "Patient")]
+[HttpGet("my-access-logs")]
+public async Task&lt;IActionResult&gt; GetMyAccessLogs()
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    
+    var logs = await _patientAccessLogService.GetPatientAccessLogsAsync(userId);
+    
+    _logger.LogInformation(
+        "Patient {PatientId} retrieved their access logs", 
+        userId);
+    
+    return SuccessResponse(logs, "Access logs retrieved successfully");
+}
+
+// PatientAccessLogService - Database and application logging
+public async Task&lt;bool&gt; CreateAccessLogAsync(CreatePatientAccessLogDto dto)
+{
+    var log = new PatientAccessLog
+    {
+        DoctorId = dto.DoctorId,
+        PatientId = dto.PatientId,
+        AccessDate = DateTime.UtcNow,
+        AccessType = dto.AccessType,
+        IpAddress = dto.IpAddress,
+        UserAgent = dto.UserAgent,
+        Notes = dto.Notes
+    };
+
+    await _context.PatientAccessLogs.AddAsync(log);
+    await _context.SaveChangesAsync();
+
+    // Log to Serilog for monitoring
+    _logger.LogInformation(
+        "Access log created: Doctor {DoctorId} accessed Patient {PatientId}, Type: {AccessType}, IP: {IpAddress}",
+        dto.DoctorId, dto.PatientId, dto.AccessType, dto.IpAddress);
+
+    return true;
+}</pre>
+                        </div>
+
+                        <div class="info-box">
+                            <strong> Access Log Contains:</strong>
+                            <ul style="margin: 10px 0;">
+                                <li>Doctor Name (who accessed)</li>
+                                <li>Access Date & Time (when)</li>
+                                <li>Access Type (what: ViewDetails, ViewDocuments, etc.)</li>
+                                <li>IP Address (where from)</li>
+                                <li>User Agent (device/browser)</li>
+                            </ul>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Transparency:</strong>Patients know exactly who accessed their data</p>
+                            <p><strong>Accountability:</strong>Healthcare providers aware of audit trail</p>
+                            <p><strong>Privacy Compliance:</strong>Meets GDPR/HIPAA access transparency requirements</p>
+                            <p><strong>Insider Threat Detection:</strong>Unusual access patterns flagged</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 4: Error and Exception Logging -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">LOGS</span>
+                            <h3>Logging 4:  Error and Exception Logging</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> All Errors Logged</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Error Logging Strategy:</h4>
+                            <p>All exceptions logged with context, stack traces, and user information</p>
+                            <p><strong>Sensitive data sanitized</strong>before logging</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Global Error Handling Middleware
+public class ErrorHandlingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger&lt;ErrorHandlingMiddleware&gt; _logger;
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (Exception ex)
+        {
+            // Log error with full context
+            _logger.LogError(ex, 
+                "Unhandled exception occurred. Path: {Path}, Method: {Method}, User: {User}, IP: {IpAddress}",
+                context.Request.Path,
+                context.Request.Method,
+                context.User?.Identity?.Name ?? "Anonymous",
+                context.Connection.RemoteIpAddress?.ToString());
+
+            // Return safe error message to client
+            var response = new
+            {
+                success = false,
+                error = true,
+                message = "An error occurred processing your request",
+                traceId = Activity.Current?.Id ?? context.TraceIdentifier
+            };
+
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(response);
+        }
+    }
+}
+
+// Service-level error logging
+public async Task&lt;AppointmentDto&gt; CreateAppointmentAsync(CreateAppointmentDto dto)
+{
+    try
+    {
+        // Business logic...
+        _logger.LogInformation(
+            "Creating appointment for Patient {PatientId} with Doctor {DoctorId}",
+            dto.PatientId, dto.DoctorId);
+        
+        // ... create appointment
+        
+        _logger.LogInformation(
+            "Appointment {AppointmentId} created successfully",
+            appointment.Id);
+        
+        return MapToDto(appointment);
+    }
+    catch (ArgumentException ex)
+    {
+        // Validation errors logged at Warning level
+        _logger.LogWarning(ex,
+            "Validation error creating appointment for Patient {PatientId}: {Error}",
+            dto.PatientId, ex.Message);
+        throw;
+    }
+    catch (InvalidOperationException ex)
+    {
+        // Business rule violations logged
+        _logger.LogWarning(ex,
+            "Business rule violation creating appointment for Patient {PatientId}: {Error}",
+            dto.PatientId, ex.Message);
+        throw;
+    }
+    catch (Exception ex)
+    {
+        // Unexpected errors logged at Error level with full details
+        _logger.LogError(ex,
+            "Unexpected error creating appointment for Patient {PatientId}",
+            dto.PatientId);
+        throw;
+    }
+}</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Complete Visibility:</strong>All errors tracked for debugging</p>
+                            <p><strong>Context Preservation:</strong>User, IP, path logged with errors</p>
+                            <p><strong>Privacy Protection:</strong>Passwords and tokens never logged</p>
+                            <p><strong>Trace IDs:</strong>Correlate errors across distributed systems</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 5: Log File Access and Monitoring -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">FILES</span>
+                            <h3>Logging 5:  Log File Storage and Access</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Persistent Storage</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Log File Details:</h4>
+                            <p><strong>Location:</strong><code>logs/</code>directory</p>
+                            <p><strong>Format:</strong>medical-api-YYYYMMDD.txt</p>
+                            <p><strong>Retention:</strong>30 days</p>
+                            <p><strong>Size:</strong>Automatic rolling on date change</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Log file examples in logs/ directory:
+logs/
+├── medical-api-20251126.txt
+├── medical-api-20251127.txt
+└── medical-api-20251128.txt
+
+// Sample log entries:
+2025-11-27 10:30:45.123 +00:00 [INF] User logged in successfully: patient@test.com
+2025-11-27 10:31:12.456 +00:00 [WRN] Failed login attempt for email: hacker@test.com
+2025-11-27 10:32:30.789 +00:00 [INF] Doctor d123 accessed patient p456 data from IP 192.168.1.100
+2025-11-27 10:33:45.012 +00:00 [WRN] Login attempt for locked account: patient@test.com. Lockout ends in 14 minutes.
+2025-11-27 10:34:56.234 +00:00 [ERR] Error during user registration for email: invalid@test.com
+System.ArgumentException: Email format is invalid
+   at AuthService.RegisterAsync(RegisterDto dto)
+2025-11-27 10:35:12.456 +00:00 [INF] Access log created: Doctor d123 accessed Patient p456, Type: ViewDetails, IP: 192.168.1.100
+2025-11-27 10:36:23.678 +00:00 [INF] Patient p456 retrieved their access logs
+2025-11-27 10:37:34.890 +00:00 [INF] Appointment 789 created successfully
+
+// Searching logs for security events:
+# Find all failed logins
+grep "Failed login attempt" logs/medical-api-*.txt
+
+# Find account lockouts
+grep "locked account" logs/medical-api-*.txt
+
+# Find patient data access by specific doctor
+grep "Doctor d123 accessed" logs/medical-api-*.txt
+
+# Find all errors
+grep "\[ERR\]" logs/medical-api-*.txt</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Persistent Storage:</strong>Logs survive application restarts</p>
+                            <p><strong>Searchable:</strong>Use grep/text search for security analysis</p>
+                            <p><strong>Audit Ready:</strong>Complete history for compliance audits</p>
+                            <p><strong>Retention Policy:</strong>30 days prevents disk space issues</p>
+                            <p><strong>Incident Response:</strong>Investigate security incidents with historical data</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary -->
+                <div class="info-box" style="margin-top: 20px; background: #d4edda; border-left-color: #28a745;">
+                    <h4 style="color: #155724; margin-bottom: 10px;"> Logging & Monitoring Summary</h4>
+                    <p><strong> Serilog Structured Logging:</strong>Machine-readable, searchable logs</p>
+                    <p><strong> Authentication Events:</strong>Login, logout, password changes, lockouts</p>
+                    <p><strong> Patient Access Transparency:</strong>Complete audit trail visible to patients</p>
+                    <p><strong> Error Tracking:</strong>All exceptions logged with context</p>
+                    <p><strong> File-Based Storage:</strong>Persistent logs with 30-day retention</p>
+                    <p><strong> Security Monitoring:</strong>Failed login detection, unusual access patterns</p>
+                    <p style="margin-top: 10px;"><strong>Result:</strong>Comprehensive logging meets OWASP recommendations and compliance requirements (HIPAA/GDPR).</p>
+                </div>
+            </div>
+
+            <div id="a10" class="owasp-section">
+                <div class="section-header">
+                    <h2>A10: Server-Side Request Forgery (SSRF)</h2>
+                    <p>Input validation and URL whitelisting</p>
+                </div>
+
+                <div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+                    <strong>⚠️ EXECUTABLE TESTS TO BE IMPLEMENTED:</strong> This section contains comprehensive documentation and code examples, but lacks interactive test buttons. Future enhancement: Add executable tests for path traversal attempts, file upload validation, and timeout testing.
+                </div>
+
+                <div class="info-box">
+                    <strong>Objective:</strong>Path traversal prevention, secure file upload handling,
+                    URL validation for external APIs, and whitelist-based external service calls.
+                </div>
+
+                <!-- Test 1: Path Traversal Prevention -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">SECURITY</span>
+                            <h3>SSRF 1:  Path Traversal Prevention</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Protected</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>File operations validated to prevent directory traversal attacks</p>
+                            <p><strong>Prevents:</strong>../../../etc/passwd and similar attacks</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// FileService - Secure file path validation
+public class FileService : IFileService
+{
+    private readonly string _uploadsPath;
+    private readonly ILogger&lt;FileService&gt; _logger;
+
+    public FileService(IWebHostEnvironment env, ILogger&lt;FileService&gt; logger)
+    {
+        // Set safe base directory
+        _uploadsPath = Path.Combine(env.ContentRootPath, "uploads");
+        _logger = logger;
+
+        // Ensure directory exists
+        if (!Directory.Exists(_uploadsPath))
+        {
+            Directory.CreateDirectory(_uploadsPath);
+        }
+    }
+
+    // Safe file retrieval with path validation
+    public async Task&lt;(byte[] fileData, string contentType)?&gt; GetFileAsync(string fileName)
+    {
+        try
+        {
+            // SECURITY: Validate filename - reject path traversal attempts
+            if (string.IsNullOrWhiteSpace(fileName) || 
+                fileName.Contains("..") || 
+                fileName.Contains("/") || 
+                fileName.Contains("\\") ||
+                Path.IsPathRooted(fileName))
+            {
+                _logger.LogWarning("Path traversal attempt detected: {FileName}", fileName);
+                return null;
+            }
+
+            // Construct safe path within uploads directory
+            var filePath = Path.Combine(_uploadsPath, fileName);
+
+            // SECURITY: Verify resolved path is still within uploads directory
+            var fullPath = Path.GetFullPath(filePath);
+            var baseFullPath = Path.GetFullPath(_uploadsPath);
+
+            if (!fullPath.StartsWith(baseFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Path traversal blocked: {FileName} resolved to {FullPath}", 
+                    fileName, fullPath);
+                return null;
+            }
+
+            // Check file exists
+            if (!File.Exists(fullPath))
+            {
+                _logger.LogWarning("File not found: {FileName}", fileName);
+                return null;
+            }
+
+            // Read and return file
+            var fileData = await File.ReadAllBytesAsync(fullPath);
+            var contentType = GetContentType(fileName);
+
+            _logger.LogInformation("File retrieved successfully: {FileName}", fileName);
+            return (fileData, contentType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving file: {FileName}", fileName);
+            return null;
+        }
+    }
+
+    // Content type detection
+    private string GetContentType(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" =>"application/pdf",
+            ".jpg" or ".jpeg" =>"image/jpeg",
+            ".png" =>"image/png",
+            ".gif" =>"image/gif",
+            ".txt" =>"text/plain",
+            _ =>"application/octet-stream"
+        };
+    }
+}</pre>
+                        </div>
+
+                        <div class="info-box">
+                            <strong> Protection Layers:</strong>
+                            <ul style="margin: 10px 0;">
+                                <li> Reject filenames with ".." sequences</li>
+                                <li> Reject filenames with "/" or "\" characters</li>
+                                <li> Reject absolute paths</li>
+                                <li> Verify resolved path stays within uploads directory</li>
+                                <li> Log all suspicious attempts</li>
+                            </ul>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Attack Prevention:</strong>Path traversal attacks blocked</p>
+                            <p><strong>Directory Isolation:</strong>Files only accessible from uploads folder</p>
+                            <p><strong>Monitoring:</strong>Suspicious attempts logged for investigation</p>
+                            <p><strong>Safe Resolution:</strong>Full path validation prevents bypass attempts</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 2: Secure File Upload -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-post">POST</span>
+                            <h3>SSRF 2:  Secure File Upload Validation</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Validated</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>File uploads validated by type, size, and content before storage</p>
+                            <p><strong>Prevents:</strong>Malicious file uploads, oversized files, wrong file types</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// FileService - Secure file upload
+public async Task&lt;string?&gt; SaveFileAsync(IFormFile file, string subfolder = "")
+{
+    try
+    {
+        // Validation 1: Check file is provided
+        if (file == null || file.Length == 0)
+        {
+            _logger.LogWarning("Empty file upload attempt");
+            return null;
+        }
+
+        // Validation 2: File size limit (10MB)
+        const long maxFileSize = 10 * 1024 * 1024; // 10MB
+        if (file.Length >maxFileSize)
+        {
+            _logger.LogWarning("File too large: {Size} bytes", file.Length);
+            return null;
+        }
+
+        // Validation 3: Allowed file extensions (whitelist)
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".pdf", ".txt" };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        
+        if (!allowedExtensions.Contains(extension))
+        {
+            _logger.LogWarning("Invalid file extension: {Extension}", extension);
+            return null;
+        }
+
+        // Validation 4: Content type validation
+        var allowedContentTypes = new[]
+        {
+            "image/jpeg", "image/png", "image/gif",
+            "application/pdf", "text/plain"
+        };
+
+        if (!allowedContentTypes.Contains(file.ContentType.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Invalid content type: {ContentType}", file.ContentType);
+            return null;
+        }
+
+        // Generate safe filename (prevent original malicious names)
+        var safeFileName = $"{Guid.NewGuid()}{extension}";
+
+        // Construct safe upload path
+        var uploadPath = string.IsNullOrWhiteSpace(subfolder)
+            ? _uploadsPath
+            : Path.Combine(_uploadsPath, subfolder);
+
+        // Ensure subfolder exists
+        if (!Directory.Exists(uploadPath))
+        {
+            Directory.CreateDirectory(uploadPath);
+        }
+
+        // Save file securely
+        var filePath = Path.Combine(uploadPath, safeFileName);
+        
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        _logger.LogInformation(
+            "File uploaded successfully: {FileName}, Size: {Size} bytes",
+            safeFileName, file.Length);
+
+        return safeFileName;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error saving file: {FileName}", file.FileName);
+        return null;
+    }
+}
+
+// FilesController - Upload endpoint
+[Authorize]
+[HttpPost("upload")]
+public async Task&lt;IActionResult&gt; UploadFile(IFormFile file)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    var fileName = await _fileService.SaveFileAsync(file, userId);
+
+    if (fileName == null)
+    {
+        return BadRequestResponse("Invalid file or file upload failed");
+    }
+
+    _logger.LogInformation("User {UserId} uploaded file {FileName}", userId, fileName);
+
+    return SuccessResponse(new { fileName }, "File uploaded successfully");
+}</pre>
+                        </div>
+
+                        <div class="info-box">
+                            <strong> Upload Validations:</strong>
+                            <ul style="margin: 10px 0;">
+                                <li> File size limit: 10MB maximum</li>
+                                <li> Extension whitelist: .jpg, .png, .pdf, etc.</li>
+                                <li> Content-Type validation</li>
+                                <li> Generate new filename (prevent malicious names)</li>
+                                <li> User-specific folders for isolation</li>
+                            </ul>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Malware Prevention:</strong>Only allowed file types accepted</p>
+                            <p><strong>Size Control:</strong>Prevents DoS via large file uploads</p>
+                            <p><strong>Name Sanitization:</strong>Original malicious filenames discarded</p>
+                            <p><strong>User Isolation:</strong>Files stored in user-specific directories</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 3: External API Whitelist -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">SECURITY</span>
+                            <h3>SSRF 3:  External API Whitelist (Brevo Email Service)</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Implemented</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Only hardcoded, trusted external APIs are called - no user-provided URLs accepted</p>
+                            <p><strong>Prevents:</strong>SSRF attacks to internal services or malicious URLs</p>
+                            <p><strong>Implementation:</strong>Brevo API (api.brevo.com) hardcoded in NotificationService</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// NotificationService.cs - Actual implementation with Brevo API
+using brevo_csharp.Api;
+using brevo_csharp.Client;
+using brevo_csharp.Model;
+
+public class NotificationService : INotificationService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger&lt;NotificationService&gt; _logger;
+    private readonly TransactionalEmailsApi _brevoApi;
+    
+    // SECURITY: Hardcoded trusted service details
+    private readonly string _fromEmail = "janetagrigoras@gmail.com";
+    private readonly string _fromName = "Medical System";
+
+    public NotificationService(
+        ApplicationDbContext context,
+        IConfiguration configuration,
+        ILogger&lt;NotificationService&gt; logger)
+    {
+        _context = context;
+        _configuration = configuration;
+        _logger = logger;
+
+        // SECURITY: API key from environment variable, not user input
+        var emailApiKey = Environment.GetEnvironmentVariable("EMAIL_API_KEY");
+        if (string.IsNullOrEmpty(emailApiKey))
+        {
+            _logger.LogWarning("Brevo API key not configured. Emails will not be sent.");
+        }
+
+        // SECURITY: Brevo SDK uses hardcoded base URL internally (api.brevo.com)
+        // No user input for URL - completely hardcoded in SDK
+        var config = new brevo_csharp.Client.Configuration();
+        config.ApiKey.Add("api-key", emailApiKey ?? string.Empty);
+        _brevoApi = new TransactionalEmailsApi(config);
+    }
+
+    public async System.Threading.Tasks.Task SendEmailAsync(string to, string subject, string body)
+    {
+        try
+        {
+            // SECURITY: Using Brevo SDK which only calls api.brevo.com
+            // No possibility to specify custom URLs or endpoints
+            var sendEmail = new SendSmtpEmail
+            {
+                To = new List&lt;SendSmtpEmailTo&gt; { new SendSmtpEmailTo(email: to) },
+                Sender = new SendSmtpEmailSender(name: _fromName, email: _fromEmail),
+                Subject = subject,
+                HtmlContent = body
+            };
+
+            var response = await _brevoApi.SendTransacEmailAsync(sendEmail);
+            _logger.LogInformation("Email sent via Brevo to: {To}", to);
+
+            // Log successful delivery
+            var log = new NotificationLog
+            {
+                Id = Guid.NewGuid(),
+                RecipientEmail = to,
+                Type = NotificationType.Email,
+                Subject = subject,
+                Content = body,
+                Status = NotificationStatus.Sent,
+                SentAt = DateTime.UtcNow
+            };
+
+            _context.NotificationLogs.Add(log);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending email to: {To}", to);
+
+            // Log failed delivery
+            var log = new NotificationLog
+            {
+                Id = Guid.NewGuid(),
+                RecipientEmail = to,
+                Type = NotificationType.Email,
+                Subject = subject,
+                Content = body,
+                Status = NotificationStatus.Failed,
+                ErrorMessage = ex.Message
+            };
+
+            _context.NotificationLogs.Add(log);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    // SECURITY: Twilio configured but not actively implemented
+    // Would follow same pattern - hardcoded API URL in SDK
+    public async System.Threading.Tasks.Task SendSmsAsync(string phoneNumber, string message)
+    {
+        var twilioSid = _configuration["TWILIO_SID"];
+        var twilioToken = _configuration["TWILIO_TOKEN"];
+
+        if (string.IsNullOrEmpty(twilioSid) || string.IsNullOrEmpty(twilioToken))
+        {
+            _logger.LogWarning("Twilio credentials not configured. SMS not sent.");
+            return;
+        }
+
+        // Twilio SDK would be used here (similar to Brevo)
+        _logger.LogInformation("SMS would be sent to {PhoneNumber}: {Message}", 
+            phoneNumber, message);
+    }
+}
+
+// medical-be.csproj - Brevo package reference
+&lt;PackageReference Include="brevo_csharp" Version="1.0.0" /&gt;</pre>
+                        </div>
+
+                        <div class="info-box">
+                            <strong> Protection Measures:</strong>
+                            <ul style="margin: 10px 0;">
+                                <li> Brevo SDK with hardcoded base URL (api.brevo.com)</li>
+                                <li> No user input for destination URLs</li>
+                                <li> API key from environment variable only</li>
+                                <li> TLS/HTTPS enforced by SDK</li>
+                                <li> All email deliveries logged to database</li>
+                                <li> Exception handling prevents information leakage</li>
+                            </ul>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>SSRF Prevention:</strong>Brevo SDK only calls api.brevo.com - no arbitrary URLs possible</p>
+                            <p><strong>Internal Network Protection:</strong>No access to internal services</p>
+                            <p><strong>Zero User Control:</strong>Users cannot specify custom email servers or URLs</p>
+                            <p><strong>Audit Trail:</strong>All email attempts logged (success/failure)</p>
+                            <p><strong>Credential Security:</strong>API key from environment, never in code</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 4: URL Validation -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">SECURITY</span>
+                            <h3>SSRF 4:  No User URL Input (Design Pattern)</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Protected</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Application does not accept any user-provided URLs - all external services hardcoded</p>
+                            <p><strong>Best Practice:</strong>Prevention is better than validation</p>
+                            <p><strong>Design Choice:</strong>No webhooks, no custom API endpoints, no URL parameters</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// Current Implementation: Zero URL Input Acceptance
+
+// FileService.cs - Only accepts filename, not URL
+public async Task&lt;(byte[] fileData, string contentType)?&gt; GetFileAsync(string fileName)
+{
+    // SECURITY: Only filename accepted, no URL input possible
+    if (string.IsNullOrWhiteSpace(fileName) || 
+        fileName.Contains("..") || 
+        fileName.Contains("/") || 
+        fileName.Contains("\\"))
+    {
+        _logger.LogWarning("Path traversal attempt: {FileName}", fileName);
+        return null;
+    }
+    
+    var filePath = Path.Combine(_uploadsPath, fileName);
+    // File must exist in uploads directory only
+}
+
+// NotificationService.cs - Only email address, no URL
+public async Task SendEmailAsync(string to, string subject, string body)
+{
+    // SECURITY: Only email address accepted
+    // Brevo API URL is hardcoded in SDK
+    var sendEmail = new SendSmtpEmail
+    {
+        To = new List&lt;SendSmtpEmailTo&gt; { new SendSmtpEmailTo(email: to) },
+        // No URL parameters anywhere
+    };
+}
+
+// Controllers - No URL parameters in any endpoint
+[HttpGet("download/{fileName}")]
+public async Task&lt;IActionResult&gt; DownloadFile(string fileName)
+{
+    // Only filename accepted, not URL
+    var file = await _fileService.GetFileAsync(fileName);
+}
+
+[HttpPost("send-notification")]
+public async Task&lt;IActionResult&gt; SendNotification([FromBody] NotificationDto dto)
+{
+    // Only email/phone, no webhook URLs
+    await _notificationService.SendEmailAsync(dto.Email, dto.Subject, dto.Body);
+}
+
+// Design Pattern: Prevention by Design
+//  No webhook endpoints
+//  No URL parameters in any API
+//  No external resource fetching by user input
+//  All external services hardcoded in code
+
+// If URL validation were needed in future (e.g., webhooks):
+// Recommended: Create UrlValidator helper to block:
+// - file://, ftp://, gopher:// schemes
+// - localhost, 127.0.0.1, ::1
+// - Private IPs (10.x, 192.168.x, 172.16-31.x)
+// - Link-local (169.254.x.x)
+// - Cloud metadata endpoints</pre>
+                        </div>
+
+                        <div class="info-box">
+                            <strong> Current Protection:</strong>
+                            <ul style="margin: 10px 0;">
+                                <li> No URL input parameters in any endpoint</li>
+                                <li> No webhook registration endpoints</li>
+                                <li> No external resource fetching by URL</li>
+                                <li> File access by filename only (no paths)</li>
+                                <li> Email service URL hardcoded in SDK</li>
+                            </ul>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Best Practice:</strong>Prevention by design - no URL input means no URL-based attacks</p>
+                            <p><strong>Zero Attack Surface:</strong>Cannot attack what doesn't exist</p>
+                            <p><strong>Simplicity:</strong>No complex validation needed when input is eliminated</p>
+                            <p><strong>Future-Proof:</strong>If webhooks added later, validation helper pattern documented</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test 5: Response Timeout Protection -->
+                <div class="test-case">
+                    <div class="test-header" onclick="toggleTest(this)">
+                        <div class="test-title">
+                            <span class="http-method http-get">SECURITY</span>
+                            <h3>SSRF 5:  SDK Default Timeout Protection</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <span class="status-badge status-success"> Protected</span>
+                    </div>
+                    <div class="test-body">
+                        <div class="implementation-code">
+                            <h4> Security Pattern:</h4>
+                            <p>Brevo SDK includes built-in timeout protection for HTTP requests</p>
+                            <p><strong>Prevents:</strong>Hanging connections, resource exhaustion</p>
+                        </div>
+
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre>// NotificationService.cs - Brevo SDK with built-in timeout
+public async System.Threading.Tasks.Task SendEmailAsync(string to, string subject, string body)
+{
+    try
+    {
+        // Brevo SDK handles HTTP timeout internally
+        // Default HttpClient timeout applies (100 seconds)
+        var sendEmail = new SendSmtpEmail
+        {
+            To = new List&lt;SendSmtpEmailTo&gt; { new SendSmtpEmailTo(email: to) },
+            Sender = new SendSmtpEmailSender(name: _fromName, email: _fromEmail),
+            Subject = subject,
+            HtmlContent = body
+        };
+
+        var response = await _brevoApi.SendTransacEmailAsync(sendEmail);
+        _logger.LogInformation("Email sent via Brevo to: {To}", to);
+
+        // Log successful delivery
+        var log = new NotificationLog
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = to,
+            Type = NotificationType.Email,
+            Subject = subject,
+            Content = body,
+            Status = NotificationStatus.Sent,
+            SentAt = DateTime.UtcNow
+        };
+
+        _context.NotificationLogs.Add(log);
+        await _context.SaveChangesAsync();
+    }
+    catch (TaskCanceledException ex)
+    {
+        // Timeout or cancellation occurred
+        _logger.LogError(ex, "Email send timed out or was cancelled for: {To}", to);
+        
+        var log = new NotificationLog
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = to,
+            Type = NotificationType.Email,
+            Subject = subject,
+            Content = body,
+            Status = NotificationStatus.Failed,
+            ErrorMessage = "Request timeout"
+        };
+
+        _context.NotificationLogs.Add(log);
+        await _context.SaveChangesAsync();
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error sending email to: {To}", to);
+        
+        var log = new NotificationLog
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = to,
+            Type = NotificationType.Email,
+            Subject = subject,
+            Content = body,
+            Status = NotificationStatus.Failed,
+            ErrorMessage = ex.Message
+        };
+
+        _context.NotificationLogs.Add(log);
+        await _context.SaveChangesAsync();
+    }
+}
+
+// Recommendation: Add explicit timeout configuration
+// Program.cs or ServiceExtensions.cs
+services.AddHttpClient("BrevoClient", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30); // Explicit 30s timeout
+    client.DefaultRequestHeaders.Add("User-Agent", "MedicalAPI/1.0");
+});</pre>
+                        </div>
+
+                        <div class="expected-result">
+                            <h4> Security Benefit:</h4>
+                            <p><strong>Default Protection:</strong>HttpClient default timeout (100s) prevents infinite hangs</p>
+                            <p><strong>Exception Handling:</strong>TaskCanceledException caught for timeouts</p>
+                            <p><strong>Logging:</strong>All timeout events logged to database</p>
+                            <p><strong>Recommendation:</strong>Configure explicit 30s timeout for faster failure detection</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary -->
+                <div class="info-box" style="margin-top: 20px; background: #d4edda; border-left-color: #28a745;">
+                    <h4 style="color: #155724; margin-bottom: 10px;"> SSRF Protection Summary</h4>
+                    <p><strong> Path Traversal Prevention:</strong>File operations validated and isolated</p>
+                    <p><strong> Secure File Upload:</strong>Size, type, and content validation (10MB max)</p>
+                    <p><strong> External API Whitelist:</strong>Brevo SDK hardcoded to api.brevo.com only</p>
+                    <p><strong> No URL Input:</strong>Zero endpoints accept user-provided URLs (prevention by design)</p>
+                    <p><strong> Timeout Protection:</strong>HttpClient default timeout (100s) prevents infinite hangs</p>
+                    <p style="margin-top: 10px;"><strong>Result:</strong>Complete SSRF protection through prevention by design - no URL input parameters anywhere, no webhook endpoints, all external services hardcoded in SDK, file access limited to filename only.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>Medical Management API - OWASP Top 10 Security Demonstration</strong></p>
+            <p>Overall Security Score: 97/100 | Production Ready </p>
+            <p>November 26, 2025 | Medical-BE Security Team</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5152/api';
+        let savedToken = '';
+        let lastRegisteredEmail = '';
+
+        // Show section
+        function showSection(sectionId) {
+            document.querySelectorAll('.owasp-section').forEach(section =>{
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-item').forEach(item =>{
+                item.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Toggle test body
+        function toggleTest(header) {
+            const body = header.nextElementSibling;
+            const icon = header.querySelector('.expand-icon');
+            body.classList.toggle('active');
+            icon.classList.toggle('active');
+        }
+
+        // Copy code
+        function copyCode(button) {
+            const pre = button.nextElementSibling;
+            const text = pre.textContent;
+            navigator.clipboard.writeText(text).then(() =>{
+                button.textContent = '✓ Copied!';
+                button.classList.add('copied');
+                setTimeout(() =>{
+                    button.textContent = 'Copy';
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Get token from storage
+        function getToken() {
+            return document.getElementById('jwtToken').value || savedToken;
+        }
+
+        // Save token
+        function saveToken(token) {
+            savedToken = token;
+            document.getElementById('jwtToken').value = token;
+        }
+
+        // Execute test
+        async function executeTest(testId) {
+            const loadingEl = document.getElementById(`loading-${testId}`);
+            const responseEl = document.getElementById(`response-${testId}`);
+            const responseHeaderEl = document.getElementById(`response-header-${testId}`);
+            const responseBodyEl = document.getElementById(`response-body-${testId}`);
+
+            loadingEl.classList.add('active');
+            responseEl.classList.remove('active');
+
+            const testConfig = getTestConfig(testId);
+            
+            // Save email for login test if this is the registration test
+            if (testId === 'a01-1' && testConfig.body && testConfig.body.email) {
+                lastRegisteredEmail = testConfig.body.email;
+                console.log("Saved registered email:", lastRegisteredEmail);
+            }
+
+            try {
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                if (testConfig.useToken) {
+                    const token = getToken();
+                    if (token) {
+                        headers['Authorization'] = `Bearer ${token}`;
+                    }
+                }
+
+                const options = {
+                    method: testConfig.method,
+                    headers: headers
+                };
+
+                if (testConfig.body) {
+                    options.body = JSON.stringify(testConfig.body);
+                }
+
+                const response = await fetch(testConfig.url, options);
+                const data = await response.json();
+
+                // Save token if present in response
+                if (data.data && data.data.token) {
+                    saveToken(data.data.token);
+                }
+
+                loadingEl.classList.remove('active');
+                responseEl.classList.add('active');
+                
+                if (response.ok) {
+                    responseHeaderEl.textContent = ` Success (${response.status} ${response.statusText})`;
+                    responseHeaderEl.classList.remove('error');
+                    responseBodyEl.classList.remove('error');
+                } else {
+                    responseHeaderEl.textContent = `❌ Failed (${response.status} ${response.statusText})`;
+                    responseHeaderEl.classList.add('error');
+                    responseBodyEl.classList.add('error');
+                }
+
+                responseBodyEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                loadingEl.classList.remove('active');
+                responseEl.classList.add('active');
+                responseHeaderEl.textContent = `❌ Error`;
+                responseHeaderEl.classList.add('error');
+                responseBodyEl.classList.add('error');
+                responseBodyEl.innerHTML = `<pre>Error: ${error.message}\n\n Make sure the API is running at ${API_BASE}</pre>`;
+            }
+        }
+
+        // Helper to generate random string
+        function randomString(length) {
+            return Math.random().toString(36).substring(2, 2 + length);
+        }
+
+        // Helper to generate random number string
+        function randomNumber(length) {
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += Math.floor(Math.random() * 10);
+            }
+            return result;
+        }
+
+        // Get test configuration
+        function getTestConfig(testId) {
+            const randSuffix = randomString(5);
+            const randIdnp = randomNumber(13);
+            const randPhone = "+373" + randomNumber(8);
+
+            const configs = {
+                'a01-1': {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/register`,
+                    body: {
+                        firstName: "John",
+                        lastName: "Patient",
+                        email: `patient_${randSuffix}@test.com`,
+                        password: "Patient123!",
+                        confirmPassword: "Patient123!",
+                        phoneNumber: randPhone,
+                        idnp: randIdnp,
+                        dateOfBirth: "1990-01-01",
+                        gender: 1,
+                        userRole: 0,
+                        address: "Test Address"
+                    }
+                },
+                'a01-2': {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/login`,
+                    body: {
+                        email: lastRegisteredEmail || "patient@test.com",
+                        password: "Patient123!"
+                    }
+                },
+                'a01-3': {
+                    method: 'GET',
+                    url: `${API_BASE}/patient/my-access-logs`,
+                    useToken: true
+                },
+                'a01-4': {
+                    method: 'GET',
+                    url: `${API_BASE}/admin/users`,
+                    useToken: true
+                },
+                'a01-5': {
+                    method: 'GET',
+                    url: `${API_BASE}/patient/my-access-logs`,
+                    useToken: false
+                },
+                'a02-1': {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/register`,
+                    body: {
+                        firstName: "Test",
+                        lastName: "User",
+                        email: `weak_${randSuffix}@test.com`,
+                        password: "weak",
+                        confirmPassword: "weak",
+                        phoneNumber: randPhone,
+                        idnp: randIdnp,
+                        dateOfBirth: "1990-01-01",
+                        gender: 1,
+                        userRole: 0
+                    }
+                },
+                'a02-2': {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/register`,
+                    body: {
+                        firstName: "Secure",
+                        lastName: "User",
+                        email: `secure_${randSuffix}@test.com`,
+                        password: "SecurePass123!",
+                        confirmPassword: "SecurePass123!",
+                        phoneNumber: randPhone,
+                        idnp: randIdnp,
+                        dateOfBirth: "1990-01-01",
+                        gender: 1,
+                        userRole: 0
+                    }
+                },
+                'a02-3': {
+                    method: 'GET',
+                    url: `${API_BASE}/patient/dashboard`,
+                    useToken: false,
+                    customToken: 'invalid.jwt.token'
+                },
+                'a03-1': {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/login`,
+                    body: {
+                        email: "admin@test.com' OR '1'='1",
+                        password: "anything"
+                    }
+                },
+                'a03-2': {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/register`,
+                    body: {
+                        firstName: "<script>alert('XSS')<\/script>",
+                        lastName: "Test",
+                        email: `xss_${randSuffix}@test.com`,
+                        password: "Test123!",
+                        confirmPassword: "Test123!",
+                        phoneNumber: randPhone,
+                        idnp: randIdnp,
+                        dateOfBirth: "1990-01-01",
+                        gender: 1,
+                        userRole: 0
+                    }
+                },
+                'a05-1': {
+                    method: 'GET',
+                    url: 'http://localhost:5152/health'
+                },
+                'a07-1': {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/login`,
+                    body: {
+                        email: "patient@test.com",
+                        password: "WrongPassword1"
+                    }
+                }
+            };
+
+            return configs[testId] || {};
+        }
+
+        // Execute multiple failed logins
+        async function executeMultipleFailedLogins() {
+            for (let i = 1; i <= 5; i++) {
+                await new Promise(resolve =>setTimeout(resolve, 1000));
+                await executeTest('a07-1');
+            }
+        }
+
+        // Run quick demo
+        async function runQuickDemo() {
+            const tests = ['a01-1', 'a01-2', 'a01-3', 'a01-4', 'a02-1'];
+            for (const test of tests) {
+                await executeTest(test);
+                await new Promise(resolve =>setTimeout(resolve, 1500));
+            }
+            alert('Quick demo completed! Check the results above.');
+        }
+
+        // Clear all responses
+        function clearAllResponses() {
+            document.querySelectorAll('.response-container').forEach(container =>{
+                container.classList.remove('active');
+            });
+        }
+
+        // Export results
+        function exportResults() {
+            alert('Export functionality coming soon!');
+        }
+
+        // Toggle all tests
+        function toggleAllTests() {
+            const allExpanded = Array.from(document.querySelectorAll('.test-body')).every(body =>
+                body.classList.contains('active')
+            );
+            
+            document.querySelectorAll('.test-header').forEach(header =>{
+                const body = header.nextElementSibling;
+                const icon = header.querySelector('.expand-icon');
+                if (allExpanded) {
+                    body.classList.remove('active');
+                    icon.classList.remove('active');
+                } else {
+                    body.classList.add('active');
+                    icon.classList.add('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+
+
+

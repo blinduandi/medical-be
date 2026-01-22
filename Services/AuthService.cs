@@ -40,11 +40,12 @@ public class AuthService : IAuthService
 	{
 		// Bridge to new LoginAsync
 		var result = await LoginAsync(new medical_be.DTOs.LoginDto { Email = loginDto.Email, Password = loginDto.Password });
-		if (result == null) throw new UnauthorizedAccessException("Invalid credentials");
+		if (result == null || result.RequiresPasswordChange) 
+			throw new UnauthorizedAccessException("Invalid credentials or password change required");
 		return new medical_be.Shared.DTOs.AuthResponseDto
 		{
-			Token = result.Token,
-			ExpiresAt = result.Expiration,
+			Token = result.Token ?? string.Empty,
+			ExpiresAt = result.Expiration ?? DateTime.UtcNow,
 			RefreshToken = string.Empty,
 			User = new medical_be.Shared.DTOs.UserDto
 			{
@@ -272,16 +273,25 @@ public class AuthService : IAuthService
 		var user = await _userManager.FindByEmailAsync(loginDto.Email);
 		if (user == null || !user.IsActive) return null;
 
+		// Check if temporary password has expired
+		if (user.MustChangePassword && user.TemporaryPasswordExpires.HasValue && user.TemporaryPasswordExpires < DateTime.UtcNow)
+		{
+			_logger.LogWarning("Temporary password has expired for user: {Email}", loginDto.Email);
+			return null;
+		}
+
 		var check = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, lockoutOnFailure: true);
 		if (!check.Succeeded) return null;
 
 		var roles = await _userManager.GetRolesAsync(user);
-		var token = _jwtService.GenerateToken(user, roles);
 
-	return new medical_be.DTOs.AuthResponseDto
+		// Always require MFA - no token issued until MFA is verified
+		_logger.LogInformation("User {Email} logged in, MFA verification required", loginDto.Email);
+
+		return new medical_be.DTOs.AuthResponseDto
 		{
-			Token = token,
-			Expiration = DateTime.UtcNow.AddMinutes(60),
+			Token = null,
+			Expiration = null,
 			User = new medical_be.DTOs.UserDto
 			{
 				Id = user.Id,
@@ -295,17 +305,59 @@ public class AuthService : IAuthService
 				IsActive = user.IsActive,
 				Roles = roles.ToList()
 			},
-			RequiresMfa = false
+			RequiresMfa = true,
+			RequiresPasswordChange = false,
+			PasswordChangeToken = null
 		};
 	}
 
 	public async Task<medical_be.DTOs.AuthResponseDto?> VerifyMfaLoginAsync(string email, string otp)
 	{
-		// Minimal stub to satisfy controllers; real OTP flow handled by MfaController
 		var user = await _userManager.FindByEmailAsync(email);
-		if (user == null) return null;
+		if (user == null || !user.IsActive) return null;
+
+		// Validate OTP using the OTP service (injected via constructor or resolve from context)
+		// For now, we trust the controller has already validated the OTP
+		
 		var roles = await _userManager.GetRolesAsync(user);
+
+		// After MFA verification, check if password change is required
+		if (user.MustChangePassword)
+		{
+			var passwordChangeToken = GeneratePasswordChangeToken();
+			user.VerificationCode = passwordChangeToken;
+			user.VerificationCodeExpires = DateTime.UtcNow.AddMinutes(15);
+			await _userManager.UpdateAsync(user);
+
+			_logger.LogInformation("User {Email} MFA verified, but requires password change", email);
+
+			return new medical_be.DTOs.AuthResponseDto
+			{
+				Token = null,
+				Expiration = null,
+				User = new medical_be.DTOs.UserDto
+				{
+					Id = user.Id,
+					Email = user.Email!,
+					FirstName = user.FirstName,
+					LastName = user.LastName,
+					PhoneNumber = user.PhoneNumber,
+					DateOfBirth = user.DateOfBirth,
+					Gender = user.Gender,
+					Address = user.Address,
+					IsActive = user.IsActive,
+					Roles = roles.ToList()
+				},
+				RequiresMfa = false,
+				RequiresPasswordChange = true,
+				PasswordChangeToken = passwordChangeToken
+			};
+		}
+
+		// MFA verified and no password change required - issue JWT token
 		var token = _jwtService.GenerateToken(user, roles);
+		_logger.LogInformation("User {Email} MFA verified, JWT token issued", email);
+
 		return new medical_be.DTOs.AuthResponseDto
 		{
 			Token = token,
@@ -323,7 +375,8 @@ public class AuthService : IAuthService
 				IsActive = user.IsActive,
 				Roles = roles.ToList()
 			},
-			RequiresMfa = false
+			RequiresMfa = false,
+			RequiresPasswordChange = false
 		};
 	}
 
@@ -332,6 +385,16 @@ public class AuthService : IAuthService
 		var user = await _userManager.FindByIdAsync(userId);
 		if (user == null) return false;
 		var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+		
+		if (result.Succeeded && user.MustChangePassword)
+		{
+			// Clear the mandatory password change flag after successful change
+			user.MustChangePassword = false;
+			user.TemporaryPasswordExpires = null;
+			await _userManager.UpdateAsync(user);
+			_logger.LogInformation("User {UserId} completed mandatory password change", userId);
+		}
+		
 		return result.Succeeded;
 	}
 
@@ -398,6 +461,80 @@ public class AuthService : IAuthService
 		if (user == null) return false;
 		var res = await _userManager.RemoveFromRoleAsync(user, roleName);
 		return res.Succeeded;
+	}
+
+	private string GeneratePasswordChangeToken()
+	{
+		// Generate a secure 32-character alphanumeric token
+		const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		var random = new Random();
+		return new string(Enumerable.Repeat(chars, 32).Select(s => s[random.Next(s.Length)]).ToArray());
+	}
+
+	public async Task<medical_be.DTOs.ResetPasswordResponseDto> ChangePasswordWithTokenAsync(medical_be.DTOs.ChangePasswordWithTokenDto dto)
+	{
+		var user = await _userManager.FindByEmailAsync(dto.Email);
+		if (user == null)
+		{
+			_logger.LogWarning("Password change with token attempted for non-existent email: {Email}", dto.Email);
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = "Invalid request"
+			};
+		}
+
+		// Check if the token exists and matches
+		if (string.IsNullOrEmpty(user.VerificationCode) || user.VerificationCode != dto.PasswordChangeToken)
+		{
+			_logger.LogWarning("Invalid password change token for user: {Email}", dto.Email);
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = "Invalid or expired token"
+			};
+		}
+
+		// Check if token has expired
+		if (user.VerificationCodeExpires == null || user.VerificationCodeExpires < DateTime.UtcNow)
+		{
+			_logger.LogWarning("Password change token expired for user: {Email}", dto.Email);
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = "Token has expired. Please login again to get a new token."
+			};
+		}
+
+		// Reset the password
+		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+		var resetResult = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
+
+		if (!resetResult.Succeeded)
+		{
+			_logger.LogError("Failed to change password for user: {Email}. Errors: {Errors}", 
+				dto.Email, string.Join("; ", resetResult.Errors.Select(e => e.Description)));
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = string.Join("; ", resetResult.Errors.Select(e => e.Description))
+			};
+		}
+
+		// Clear the token and MustChangePassword flag
+		user.VerificationCode = null;
+		user.VerificationCodeExpires = null;
+		user.MustChangePassword = false;
+		user.TemporaryPasswordExpires = null;
+		await _userManager.UpdateAsync(user);
+
+		_logger.LogInformation("Password changed successfully with token for user: {Email}", dto.Email);
+
+		return new medical_be.DTOs.ResetPasswordResponseDto
+		{
+			Success = true,
+			Message = "Password changed successfully. Please login with your new password."
+		};
 	}
 
 	private async Task<medical_be.Shared.DTOs.UserDto> MapToUserDtoAsync(User user)
@@ -533,5 +670,267 @@ public class AuthService : IAuthService
 			Message = "Email verified successfully"
 		};
 
+	}
+
+	// Password reset methods
+	public async Task<bool> ForgotPasswordAsync(string email)
+	{
+		var user = await _userManager.FindByEmailAsync(email);
+		if (user == null)
+		{
+			// Return true to prevent email enumeration attacks
+			_logger.LogWarning("Password reset requested for non-existent email: {Email}", email);
+			return true;
+		}
+
+		// Generate a 6-digit reset code
+		var resetCode = new Random().Next(100000, 999999).ToString();
+		
+		// Store the code and set 15 minute expiration
+		user.VerificationCode = resetCode;
+		user.VerificationCodeExpires = DateTime.UtcNow.AddMinutes(15);
+
+		var result = await _userManager.UpdateAsync(user);
+		if (!result.Succeeded)
+		{
+			_logger.LogError("Failed to save password reset code for email: {Email}. Errors: {Errors}", 
+				email, string.Join("; ", result.Errors.Select(e => e.Description)));
+			return false;
+		}
+
+		_logger.LogInformation("Password reset code generated for user: {Email}", email);
+
+		// Send password reset email
+		await _notificationService.SendPasswordResetAsync(email, resetCode);
+
+		return true;
+	}
+
+	public async Task<medical_be.DTOs.ResetPasswordResponseDto> ResetPasswordAsync(medical_be.DTOs.ResetPasswordDto dto)
+	{
+		var user = await _userManager.FindByEmailAsync(dto.Email);
+		if (user == null)
+		{
+			_logger.LogWarning("Password reset attempted for non-existent email: {Email}", dto.Email);
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = "Invalid request"
+			};
+		}
+
+		// Check if reset code exists
+		if (string.IsNullOrEmpty(user.VerificationCode))
+		{
+			_logger.LogWarning("No reset code found for user: {Email}", dto.Email);
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = "No password reset request found. Please request a new code."
+			};
+		}
+
+		// Check if code has expired
+		if (user.VerificationCodeExpires == null || user.VerificationCodeExpires < DateTime.UtcNow)
+		{
+			_logger.LogWarning("Password reset code expired for user: {Email}", dto.Email);
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = "Reset code has expired. Please request a new code."
+			};
+		}
+
+		// Check if code matches
+		if (user.VerificationCode != dto.ResetCode)
+		{
+			_logger.LogWarning("Invalid reset code provided for user: {Email}", dto.Email);
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = "Invalid reset code"
+			};
+		}
+
+		// Reset the password using Identity's token-based approach
+		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+		var resetResult = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
+
+		if (!resetResult.Succeeded)
+		{
+			_logger.LogError("Failed to reset password for user: {Email}. Errors: {Errors}", 
+				dto.Email, string.Join("; ", resetResult.Errors.Select(e => e.Description)));
+			return new medical_be.DTOs.ResetPasswordResponseDto
+			{
+				Success = false,
+				Message = string.Join("; ", resetResult.Errors.Select(e => e.Description))
+			};
+		}
+
+		// Clear the verification code after successful reset
+		user.VerificationCode = null;
+		user.VerificationCodeExpires = null;
+		await _userManager.UpdateAsync(user);
+
+		_logger.LogInformation("Password reset successful for user: {Email}", dto.Email);
+
+		return new medical_be.DTOs.ResetPasswordResponseDto
+		{
+			Success = true,
+			Message = "Password has been reset successfully"
+		};
+	}
+
+	public async Task<medical_be.DTOs.DoctorCreationResultDto> CreateDoctorWithTemporaryPasswordAsync(medical_be.DTOs.RegisterDto registerDto)
+	{
+		// Generate a secure temporary password
+		var temporaryPassword = GenerateSecureTemporaryPassword();
+		var passwordExpiresAt = DateTime.UtcNow.AddMinutes(30);
+
+		var user = new User
+		{
+			UserName = registerDto.Email,
+			Email = registerDto.Email,
+			IDNP = registerDto.IDNP,
+			FirstName = registerDto.FirstName,
+			LastName = registerDto.LastName,
+			PhoneNumber = registerDto.PhoneNumber,
+			DateOfBirth = registerDto.DateOfBirth,
+			Gender = registerDto.Gender,
+			Address = registerDto.Address,
+			EmailConfirmed = true,
+			IsActive = true,
+			MustChangePassword = true,
+			TemporaryPasswordExpires = passwordExpiresAt
+		};
+
+		var result = await _userManager.CreateAsync(user, temporaryPassword);
+		if (!result.Succeeded)
+		{
+			_logger.LogWarning("Doctor registration failed for {Email}. Errors: {Errors}",
+				registerDto.Email, string.Join("; ", result.Errors.Select(e => e.Description)));
+
+			return new medical_be.DTOs.DoctorCreationResultDto
+			{
+				Success = false,
+				Message = "Doctor registration failed",
+				Errors = result.Errors.Select(e => e.Description).ToList()
+			};
+		}
+
+		// Assign Doctor role
+		var roleResult = await _userManager.AddToRoleAsync(user, "Doctor");
+		if (!roleResult.Succeeded)
+		{
+			_logger.LogWarning("Failed to assign Doctor role to user {Email}. Errors: {Errors}",
+				registerDto.Email, string.Join("; ", roleResult.Errors.Select(e => e.Description)));
+		}
+
+		var roles = await _userManager.GetRolesAsync(user);
+		var token = _jwtService.GenerateToken(user, roles);
+
+		// Send temporary password via email
+		await SendTemporaryPasswordEmailAsync(user, temporaryPassword, passwordExpiresAt);
+
+		_logger.LogInformation("Doctor created with temporary password: {Email}, expires at {ExpiresAt}", 
+			registerDto.Email, passwordExpiresAt);
+
+		return new medical_be.DTOs.DoctorCreationResultDto
+		{
+			Success = true,
+			Message = "Doctor created successfully. Temporary password sent to email.",
+			TemporaryPassword = temporaryPassword,
+			PasswordExpiresAt = passwordExpiresAt,
+			AuthResponse = new medical_be.DTOs.AuthResponseDto
+			{
+				Token = token,
+				Expiration = DateTime.UtcNow.AddMinutes(60),
+				User = new medical_be.DTOs.UserDto
+				{
+					Id = user.Id,
+					Email = user.Email!,
+					FirstName = user.FirstName,
+					LastName = user.LastName,
+					PhoneNumber = user.PhoneNumber,
+					DateOfBirth = user.DateOfBirth,
+					Gender = user.Gender,
+					Address = user.Address,
+					IsActive = user.IsActive,
+					Roles = roles.ToList()
+				},
+				RequiresPasswordChange = true
+			}
+		};
+	}
+
+	private string GenerateSecureTemporaryPassword()
+	{
+		// Generate a secure random password: 12 chars with uppercase, lowercase, digit, and special char
+		const string uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		const string lowercase = "abcdefghijklmnopqrstuvwxyz";
+		const string digits = "0123456789";
+		const string special = "!@#$%^&*";
+		const string allChars = uppercase + lowercase + digits + special;
+
+		var random = new Random();
+		var password = new char[12];
+
+		// Ensure at least one of each required character type
+		password[0] = uppercase[random.Next(uppercase.Length)];
+		password[1] = lowercase[random.Next(lowercase.Length)];
+		password[2] = digits[random.Next(digits.Length)];
+		password[3] = special[random.Next(special.Length)];
+
+		// Fill the rest randomly
+		for (int i = 4; i < password.Length; i++)
+		{
+			password[i] = allChars[random.Next(allChars.Length)];
+		}
+
+		// Shuffle the password
+		return new string(password.OrderBy(_ => random.Next()).ToArray());
+	}
+
+	private async Task SendTemporaryPasswordEmailAsync(User user, string temporaryPassword, DateTime expiresAt)
+	{
+		try
+		{
+			var placeholders = new Dictionary<string, string>
+			{
+				{ "FirstName", user.FirstName },
+				{ "LastName", user.LastName },
+				{ "Email", user.Email! },
+				{ "TemporaryPassword", temporaryPassword },
+				{ "ExpiresAt", expiresAt.ToString("MMMM dd, yyyy HH:mm UTC") }
+			};
+
+			// Try to use template, fallback to inline HTML
+			string body;
+			try
+			{
+				body = await _emailTemplateService.GetTemplateAsync("DoctorTemporaryPassword.html", placeholders);
+			}
+			catch
+			{
+				// Fallback template if file doesn't exist
+				body = $@"
+					<h2>Welcome to Medical System!</h2>
+					<p>Dear Dr. {user.FirstName} {user.LastName},</p>
+					<p>Your doctor account has been created. Here are your temporary login credentials:</p>
+					<p><strong>Email:</strong> {user.Email}</p>
+					<p><strong>Temporary Password:</strong> <code>{temporaryPassword}</code></p>
+					<p style='color: #dc3545;'><strong>Important:</strong> This password will expire on {expiresAt:MMMM dd, yyyy HH:mm} UTC (30 minutes from account creation).</p>
+					<p>For security reasons, you will be required to change your password after your first login.</p>
+					<p>Best regards,<br>Medical System Team</p>
+				";
+			}
+
+			await _notificationService.SendEmailAsync(user.Email!, "Your Doctor Account - Temporary Password", body);
+			_logger.LogInformation("Temporary password email sent to doctor: {Email}", user.Email);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to send temporary password email to doctor: {Email}", user.Email);
+		}
 	}
 }

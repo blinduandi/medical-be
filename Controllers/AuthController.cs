@@ -315,6 +315,82 @@ public class AuthController : BaseApiController
         }
     }
 
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        try
+        {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
+            var result = await _authService.ForgotPasswordAsync(dto.Email);
+            
+            // Always return success to prevent email enumeration
+            _logger.LogInformation("Password reset requested for email: {Email}", dto.Email);
+            return SuccessResponse(null, "If the email exists, a password reset code has been sent.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing forgot password request");
+            return InternalServerErrorResponse("An error occurred while processing your request");
+        }
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        try
+        {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
+            var result = await _authService.ResetPasswordAsync(dto);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation("Password reset successful for email: {Email}", dto.Email);
+                return SuccessResponse(result, result.Message);
+            }
+
+            _logger.LogWarning("Password reset failed for email: {Email}. Reason: {Message}", dto.Email, result.Message);
+            return ErrorResponse(result.Message, result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting password");
+            return InternalServerErrorResponse("An error occurred while resetting password");
+        }
+    }
+
+    [HttpPost("change-password-with-token")]
+    public async Task<IActionResult> ChangePasswordWithToken([FromBody] ChangePasswordWithTokenDto dto)
+    {
+        try
+        {
+            var validationResult = ValidateModel();
+            if (validationResult != null)
+                return validationResult;
+
+            var result = await _authService.ChangePasswordWithTokenAsync(dto);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation("Password changed with token for email: {Email}", dto.Email);
+                return SuccessResponse(result, result.Message);
+            }
+
+            _logger.LogWarning("Password change with token failed for email: {Email}. Reason: {Message}", dto.Email, result.Message);
+            return ErrorResponse(result.Message, result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing password with token");
+            return InternalServerErrorResponse("An error occurred while changing password");
+        }
+    }
+
     // Development endpoint to get validation documentation
     [HttpGet("validation-docs")]
     public IActionResult GetValidationDocumentation([FromQuery] string? model = null)
@@ -329,12 +405,16 @@ public class AuthController : BaseApiController
                 "updateuser" => ApiResponse.GetValidationDocumentation<UpdateUserDto>(true),
                 "getverificationcode" => ApiResponse.GetValidationDocumentation<GetVerificationCodeDto>(true),
                 "verifycode" => ApiResponse.GetValidationDocumentation<VerifyCodeDto>(true),
+                "forgotpassword" => ApiResponse.GetValidationDocumentation<ForgotPasswordDto>(true),
+                "resetpassword" => ApiResponse.GetValidationDocumentation<ResetPasswordDto>(true),
+                "changepasswordwithtoken" => ApiResponse.GetValidationDocumentation<ChangePasswordWithTokenDto>(true),
                 _ => SuccessResponse(new
                 {
                     availableModels = new[]
                     {
                         "register", "login", "changepassword", "updateuser", 
-                        "getverificationcode", "verifycode"
+                        "getverificationcode", "verifycode", "forgotpassword", "resetpassword",
+                        "changepasswordwithtoken"
                     }
                 }, "Available validation documentation models")
             };
