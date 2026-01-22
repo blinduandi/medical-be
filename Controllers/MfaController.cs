@@ -213,7 +213,7 @@ namespace medical_be.Controllers
         }
 
         /// <summary>
-        /// Send OTP for login verification
+        /// Send verification code for login (MFA)
         /// </summary>
         [HttpPost("send-login-otp")]
         [AllowAnonymous]
@@ -222,29 +222,31 @@ namespace medical_be.Controllers
             try
             {
                 var user = await _userManager.FindByEmailAsync(request.Email);
-                if (user == null || !user.IsMFAEnabled)
+                if (user == null || !user.IsActive)
                 {
-                    // Don't reveal if user exists or MFA status
-                    return SuccessResponse(null, "If MFA is enabled for this account, an OTP has been sent.");
+                    // Don't reveal if user exists - always return success
+                    return SuccessResponse(null, "If your account exists, a verification code has been sent to your email.");
                 }
 
-                var otpSent = await _otpService.SendOtpAsync(user.Id, user.Email!);
-                if (!otpSent)
+                // Use existing verification code system (DB-backed, not cache)
+                var codeSent = await _authService.GenerateVerificationCodeAsync(request.Email);
+                if (!codeSent)
                 {
-                    return InternalServerErrorResponse( "Failed to send OTP");
+                    return InternalServerErrorResponse("Failed to send verification code");
                 }
 
-                return SuccessResponse(null, "OTP sent to your registered email address.");
+                _logger.LogInformation("Login verification code sent to: {Email}", request.Email);
+                return SuccessResponse(null, "Verification code sent to your registered email address.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending login OTP for email: {Email}", request.Email);
-                return InternalServerErrorResponse( "Internal server error");
+                _logger.LogError(ex, "Error sending login verification code for email: {Email}", request.Email);
+                return InternalServerErrorResponse("Internal server error");
             }
         }
 
         /// <summary>
-        /// Verify login OTP and get authentication token
+        /// Verify login code and get authentication token
         /// </summary>
         [HttpPost("verify-login-otp")]
         [AllowAnonymous]
@@ -258,15 +260,15 @@ namespace medical_be.Controllers
                     return UnauthorizedResponse("Invalid credentials");
                 }
 
-                // Validate OTP
-                var isValidOtp = await _otpService.ValidateOtpAsync(user.Id, request.Otp);
-                if (!isValidOtp)
+                // Validate verification code using existing system
+                var verificationResult = await _authService.VerifyCodeAsync(request.Email, request.Otp);
+                if (!verificationResult.IsValid)
                 {
-                    _logger.LogWarning("Invalid OTP for user: {Email}", request.Email);
-                    return UnauthorizedResponse("Invalid or expired OTP");
+                    _logger.LogWarning("Invalid verification code for user: {Email}. Reason: {Reason}", request.Email, verificationResult.Message);
+                    return UnauthorizedResponse(verificationResult.Message ?? "Invalid or expired verification code");
                 }
 
-                // OTP is valid - get auth response (which checks for password change requirement)
+                // Code is valid - get auth response (which checks for password change requirement)
                 var result = await _authService.VerifyMfaLoginAsync(request.Email, request.Otp);
                 if (result == null)
                 {
@@ -281,7 +283,7 @@ namespace medical_be.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying login OTP for email: {Email}", request.Email);
+                _logger.LogError(ex, "Error verifying login code for email: {Email}", request.Email);
                 return InternalServerErrorResponse("Internal server error");
             }
         }
