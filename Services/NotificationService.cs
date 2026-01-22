@@ -233,19 +233,19 @@ namespace medical_be.Services
                     return;
                 }
 
-                var subject = "Password Reset Request";
-                var resetUrl = $"{_configuration["FRONTEND_URL"]}/reset-password?token={resetToken}&email={email}";
+                var subject = "Password Reset Code";
                 var body = $@"
                     <h2>Password Reset Request</h2>
                     <p>Dear {user.FirstName} {user.LastName},</p>
                     <p>We received a request to reset your password for your Medical System account.</p>
-                    <p><a href='{resetUrl}' style='background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Reset Password</a></p>
-                    <p>This link will expire in 24 hours for security reasons.</p>
+                    <p>Your password reset code is: <strong style='font-size: 24px; color: #007bff;'>{resetToken}</strong></p>
+                    <p>This code will expire in 15 minutes for security reasons.</p>
                     <p>If you didn't request this password reset, please ignore this email or contact support.</p>
                     <p>Best regards,<br>Medical System Team</p>
                 ";
 
                 await SendEmailAsync(email, subject, body);
+                _logger.LogInformation("Password reset code sent to: {Email}", email);
             }
             catch (Exception ex)
             {
