@@ -74,7 +74,7 @@ namespace medical_be.Controllers
                     return ErrorResponse("Phone number is required for MFA");
                 }
 
-                var otpSent = await _otpService.SendOtpAsync(userId, user.PhoneNumber);
+                var otpSent = await _otpService.SendOtpAsync(userId, user.Email!);
                 if (!otpSent)
                 {
                     return InternalServerErrorResponse( "Failed to send OTP");
@@ -83,7 +83,7 @@ namespace medical_be.Controllers
                 // Audit log
                 await _auditService.LogAuditAsync(userId, "MfaEnableAttempt", "Attempted to enable MFA", "User", null, Request.GetClientIpAddress());
 
-                return SuccessResponse(null, "OTP sent to your phone number. Please verify to enable MFA.");
+                return SuccessResponse(null, "OTP sent to your registered email address. Please verify to enable MFA.");
             }
             catch (Exception ex)
             {
@@ -159,13 +159,13 @@ namespace medical_be.Controllers
                 }
 
                 // Send OTP for additional verification
-                var otpSent = await _otpService.SendOtpAsync(userId, user.PhoneNumber!);
+                var otpSent = await _otpService.SendOtpAsync(userId, user.Email!);
                 if (!otpSent)
                 {
                     return InternalServerErrorResponse( "Failed to send OTP");
                 }
 
-                return SuccessResponse(null, "OTP sent to your phone number. Please verify to disable MFA.");
+                return SuccessResponse(null, "OTP sent to your registered email address. Please verify to disable MFA.");
             }
             catch (Exception ex)
             {
@@ -228,13 +228,13 @@ namespace medical_be.Controllers
                     return SuccessResponse(null, "If MFA is enabled for this account, an OTP has been sent.");
                 }
 
-                var otpSent = await _otpService.SendOtpAsync(user.Id, user.PhoneNumber!);
+                var otpSent = await _otpService.SendOtpAsync(user.Id, user.Email!);
                 if (!otpSent)
                 {
                     return InternalServerErrorResponse( "Failed to send OTP");
                 }
 
-                return SuccessResponse(null, "OTP sent to your registered phone number.");
+                return SuccessResponse(null, "OTP sent to your registered email address.");
             }
             catch (Exception ex)
             {
