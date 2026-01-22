@@ -435,6 +435,400 @@ namespace medical_be.Controllers
             }
         }
 
+        #region Admin Management
+
+        /// <summary>
+        /// Get all admins with pagination
+        /// </summary>
+        [HttpGet("admins")]
+        public async Task<IActionResult> GetAdmins([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] bool? isActive = null)
+        {
+            try
+            {
+                // Get all users with Admin role
+                var adminsQuery = _userManager.Users.AsQueryable();
+
+                // Filter by active status if provided
+                if (isActive.HasValue)
+                {
+                    adminsQuery = adminsQuery.Where(u => u.IsActive == isActive.Value);
+                }
+
+                var allUsers = await adminsQuery.ToListAsync();
+                var admins = new List<User>();
+
+                // Filter users who have Admin role
+                foreach (var user in allUsers)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    if (roles.Contains("Admin"))
+                    {
+                        admins.Add(user);
+                    }
+                }
+
+                var totalCount = admins.Count;
+                var paginatedAdmins = admins
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var adminDtos = paginatedAdmins.Select(admin => new
+                {
+                    admin.Id,
+                    admin.FirstName,
+                    admin.LastName,
+                    admin.Email,
+                    admin.PhoneNumber,
+                    admin.IDNP,
+                    admin.DateOfBirth,
+                    admin.Address,
+                    admin.IsActive,
+                    admin.CreatedAt,
+                    admin.UpdatedAt,
+                    Roles = new[] { "Admin" }
+                }).ToList();
+
+                return SuccessResponse(new
+                {
+                    Admins = adminDtos,
+                    TotalCount = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                }, "Admins retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting admins");
+                return InternalServerErrorResponse("An error occurred while retrieving admins");
+            }
+        }
+
+        /// <summary>
+        /// Get admin by ID
+        /// </summary>
+        [HttpGet("admins/{adminId}")]
+        public async Task<IActionResult> GetAdminById(string adminId)
+        {
+            try
+            {
+                var admin = await _userManager.FindByIdAsync(adminId);
+                if (admin == null)
+                {
+                    return NotFoundResponse("Admin not found");
+                }
+
+                var roles = await _userManager.GetRolesAsync(admin);
+                if (!roles.Contains("Admin"))
+                {
+                    return NotFoundResponse("User is not an admin");
+                }
+
+                var adminDto = new
+                {
+                    admin.Id,
+                    admin.FirstName,
+                    admin.LastName,
+                    admin.Email,
+                    admin.PhoneNumber,
+                    admin.IDNP,
+                    admin.DateOfBirth,
+                    admin.Gender,
+                    admin.Address,
+                    admin.IsActive,
+                    admin.CreatedAt,
+                    admin.UpdatedAt,
+                    Roles = roles.ToList()
+                };
+
+                return SuccessResponse(adminDto, "Admin retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting admin: {AdminId}", adminId);
+                return InternalServerErrorResponse("An error occurred while retrieving admin");
+            }
+        }
+
+        /// <summary>
+        /// Create new admin
+        /// </summary>
+        [HttpPost("admins")]
+        public async Task<IActionResult> CreateAdmin([FromBody] CreateUserDTO createAdminDto)
+        {
+            try
+            {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
+                // Check if user already exists
+                var existingUser = await _userManager.FindByEmailAsync(createAdminDto.Email);
+                if (existingUser != null)
+                {
+                    return ErrorResponse("User with this email already exists");
+                }
+
+                // Check IDNP uniqueness
+                var existingIDNP = await _context.Users.FirstOrDefaultAsync(u => u.IDNP == createAdminDto.IDNP);
+                if (existingIDNP != null)
+                {
+                    return ErrorResponse("User with this IDNP already exists");
+                }
+
+                // Validate required fields
+                if (!createAdminDto.DateOfBirth.HasValue)
+                {
+                    return ValidationErrorResponse("Date of birth is required");
+                }
+
+                var admin = new User
+                {
+                    UserName = createAdminDto.Email,
+                    Email = createAdminDto.Email,
+                    FirstName = createAdminDto.FirstName,
+                    LastName = createAdminDto.LastName,
+                    PhoneNumber = createAdminDto.PhoneNumber,
+                    IDNP = createAdminDto.IDNP,
+                    DateOfBirth = createAdminDto.DateOfBirth.Value,
+                    Address = createAdminDto.Address,
+                    IsActive = true,
+                    EmailConfirmed = true,
+                    Gender = Gender.Male // Default, can be updated later
+                };
+
+                var result = await _userManager.CreateAsync(admin, createAdminDto.Password);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return ValidationErrorResponse("Failed to create admin", errors);
+                }
+
+                // Assign Admin role
+                await _userManager.AddToRoleAsync(admin, "Admin");
+
+                // Audit log
+                await _auditService.LogAuditAsync(User.GetUserId(), "AdminCreated", $"Created admin: {createAdminDto.Email}", "User", null, Request.GetClientIpAddress());
+
+                var adminDto = new
+                {
+                    admin.Id,
+                    admin.FirstName,
+                    admin.LastName,
+                    admin.Email,
+                    admin.PhoneNumber,
+                    admin.IDNP,
+                    admin.DateOfBirth,
+                    admin.Address,
+                    admin.IsActive,
+                    admin.CreatedAt,
+                    Roles = new[] { "Admin" }
+                };
+
+                return SuccessResponse(adminDto, "Admin created successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating admin: {Email}", createAdminDto.Email);
+                return InternalServerErrorResponse("An error occurred while creating admin");
+            }
+        }
+
+        /// <summary>
+        /// Update admin
+        /// </summary>
+        [HttpPut("admins/{adminId}")]
+        public async Task<IActionResult> UpdateAdmin(string adminId, [FromBody] UpdateUserDTO updateAdminDto)
+        {
+            try
+            {
+                var validationResult = ValidateModel();
+                if (validationResult != null)
+                    return validationResult;
+
+                var admin = await _userManager.FindByIdAsync(adminId);
+                if (admin == null)
+                {
+                    return NotFoundResponse("Admin not found");
+                }
+
+                var roles = await _userManager.GetRolesAsync(admin);
+                if (!roles.Contains("Admin"))
+                {
+                    return NotFoundResponse("User is not an admin");
+                }
+
+                // Check IDNP uniqueness (excluding current admin)
+                if (!string.IsNullOrEmpty(updateAdminDto.IDNP) && updateAdminDto.IDNP != admin.IDNP)
+                {
+                    var existingIDNP = await _context.Users
+                        .FirstOrDefaultAsync(u => u.IDNP == updateAdminDto.IDNP && u.Id != adminId);
+                    if (existingIDNP != null)
+                    {
+                        return ErrorResponse("User with this IDNP already exists");
+                    }
+                }
+
+                // Update admin properties
+                admin.FirstName = updateAdminDto.FirstName ?? admin.FirstName;
+                admin.LastName = updateAdminDto.LastName ?? admin.LastName;
+                admin.PhoneNumber = updateAdminDto.PhoneNumber ?? admin.PhoneNumber;
+                admin.IDNP = updateAdminDto.IDNP ?? admin.IDNP;
+                admin.DateOfBirth = updateAdminDto.DateOfBirth ?? admin.DateOfBirth;
+                admin.Address = updateAdminDto.Address ?? admin.Address;
+                admin.UpdatedAt = DateTime.UtcNow;
+
+                var result = await _userManager.UpdateAsync(admin);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return ErrorResponse("Failed to update admin", errors);
+                }
+
+                // Audit log
+                await _auditService.LogAuditAsync(User.GetUserId(), "AdminUpdated", $"Updated admin: {admin.Email}", "User", null, Request.GetClientIpAddress());
+
+                var adminDto = new
+                {
+                    admin.Id,
+                    admin.FirstName,
+                    admin.LastName,
+                    admin.Email,
+                    admin.PhoneNumber,
+                    admin.IDNP,
+                    admin.DateOfBirth,
+                    admin.Address,
+                    admin.IsActive,
+                    admin.UpdatedAt,
+                    Roles = roles.ToList()
+                };
+
+                return SuccessResponse(adminDto, "Admin updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating admin: {AdminId}", adminId);
+                return InternalServerErrorResponse("An error occurred while updating admin");
+            }
+        }
+
+        /// <summary>
+        /// Activate/Deactivate admin
+        /// </summary>
+        [HttpPatch("admins/{adminId}/status")]
+        public async Task<IActionResult> ToggleAdminStatus(string adminId, [FromBody] ToggleStatusDTO statusDto)
+        {
+            try
+            {
+                var admin = await _userManager.FindByIdAsync(adminId);
+                if (admin == null)
+                {
+                    return NotFoundResponse("Admin not found");
+                }
+
+                var roles = await _userManager.GetRolesAsync(admin);
+                if (!roles.Contains("Admin"))
+                {
+                    return NotFoundResponse("User is not an admin");
+                }
+
+                // Prevent deactivating self
+                var currentUserId = User.GetUserId();
+                if (adminId == currentUserId && !statusDto.IsActive)
+                {
+                    return ErrorResponse("You cannot deactivate your own account");
+                }
+
+                admin.IsActive = statusDto.IsActive;
+                admin.UpdatedAt = DateTime.UtcNow;
+
+                var result = await _userManager.UpdateAsync(admin);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return ErrorResponse("Failed to update admin status", errors);
+                }
+
+                // Audit log
+                await _auditService.LogAuditAsync(User.GetUserId(), 
+                    statusDto.IsActive ? "AdminActivated" : "AdminDeactivated", 
+                    $"{(statusDto.IsActive ? "Activated" : "Deactivated")} admin: {admin.Email}", 
+                    "User", null, Request.GetClientIpAddress());
+
+                return SuccessResponse(new { admin.Id, admin.IsActive }, 
+                    $"Admin {(statusDto.IsActive ? "activated" : "deactivated")} successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error toggling admin status: {AdminId}", adminId);
+                return InternalServerErrorResponse("An error occurred while updating admin status");
+            }
+        }
+
+        /// <summary>
+        /// Delete admin (soft delete)
+        /// </summary>
+        [HttpDelete("admins/{adminId}")]
+        public async Task<IActionResult> DeleteAdmin(string adminId)
+        {
+            try
+            {
+                var admin = await _userManager.FindByIdAsync(adminId);
+                if (admin == null)
+                {
+                    return NotFoundResponse("Admin not found");
+                }
+
+                var roles = await _userManager.GetRolesAsync(admin);
+                if (!roles.Contains("Admin"))
+                {
+                    return NotFoundResponse("User is not an admin");
+                }
+
+                // Prevent deleting self
+                var currentUserId = User.GetUserId();
+                if (adminId == currentUserId)
+                {
+                    return ErrorResponse("You cannot delete your own account");
+                }
+
+                // Check if this is the last active admin
+                var allUsers = await _userManager.Users.Where(u => u.IsActive).ToListAsync();
+                var activeAdmins = new List<User>();
+                foreach (var user in allUsers)
+                {
+                    var userRoles = await _userManager.GetRolesAsync(user);
+                    if (userRoles.Contains("Admin"))
+                    {
+                        activeAdmins.Add(user);
+                    }
+                }
+
+                if (activeAdmins.Count <= 1)
+                {
+                    return ErrorResponse("Cannot delete the last active admin. Please create another admin first.");
+                }
+
+                // Soft delete - deactivate instead of hard delete
+                admin.IsActive = false;
+                admin.UpdatedAt = DateTime.UtcNow;
+                await _userManager.UpdateAsync(admin);
+
+                // Audit log
+                await _auditService.LogAuditAsync(User.GetUserId(), "AdminDeleted", $"Deleted admin: {admin.Email}", "User", null, Request.GetClientIpAddress());
+
+                return SuccessResponse(null, "Admin deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting admin: {AdminId}", adminId);
+                return InternalServerErrorResponse("An error occurred while deleting admin");
+            }
+        }
+
+        #endregion
+
         /// <summary>
         /// Get system statistics
         /// </summary>

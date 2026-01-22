@@ -232,3 +232,8 @@ public class AssignRoleDTO
 {
     public string RoleName { get; set; } = string.Empty;
 }
+
+public class ToggleStatusDTO
+{
+    public bool IsActive { get; set; }
+}
