@@ -566,10 +566,16 @@ public class AuthService : IAuthService
 			return false;
 		}
 
-		// Generate a 6-digit verification code
+		// Clear any existing verification code to invalidate old codes
+		if (!string.IsNullOrEmpty(user.VerificationCode))
+		{
+			_logger.LogInformation("Invalidating previous verification code for user: {Email}", email);
+		}
+
+		// Generate a new 6-digit verification code
 		var code = new Random().Next(100000, 999999).ToString();
 		
-		// Set expiration to 15 minutes from now
+		// Set new code and expiration (overwrites old code, invalidating it)
 		user.VerificationCode = code;
 		user.VerificationCodeExpires = DateTime.UtcNow.AddMinutes(15);
 
@@ -640,7 +646,7 @@ public class AuthService : IAuthService
 		// Check if code matches
 		if (user.VerificationCode != code)
 		{
-			_logger.LogWarning("Invalid verification code provided for user: {Email}", email);
+			_logger.LogWarning("Invalid verification code provided for user: {Email}. Code may have been replaced by a newer request.", email);
 			return new medical_be.DTOs.VerificationResponseDto
 			{
 				IsValid = false,
