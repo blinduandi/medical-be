@@ -113,6 +113,48 @@ public class UpdateAllergyDto
     public bool IsActive { get; set; }
 }
 
+// Medical Record DTOs
+public class MedicalRecordDto
+{
+    public int Id { get; set; }
+    public string PatientId { get; set; } = string.Empty;
+    public string DoctorId { get; set; } = string.Empty;
+    public int? AppointmentId { get; set; }
+    public string Diagnosis { get; set; } = string.Empty;
+    public string? Symptoms { get; set; }
+    public string? Treatment { get; set; }
+    public string? Prescription { get; set; }
+    public string? Notes { get; set; }
+    public DateTime RecordDate { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    
+    // Populated fields
+    public string PatientName { get; set; } = string.Empty;
+    public string DoctorName { get; set; } = string.Empty;
+}
+
+public class CreateMedicalRecordDto
+{
+    public int? AppointmentId { get; set; }
+    public string Diagnosis { get; set; } = string.Empty;
+    public string? Symptoms { get; set; }
+    public string? Treatment { get; set; }
+    public string? Prescription { get; set; }
+    public string? Notes { get; set; }
+    public DateTime? RecordDate { get; set; }
+}
+
+public class UpdateMedicalRecordDto
+{
+    public string Diagnosis { get; set; } = string.Empty;
+    public string? Symptoms { get; set; }
+    public string? Treatment { get; set; }
+    public string? Prescription { get; set; }
+    public string? Notes { get; set; }
+    public DateTime? RecordDate { get; set; }
+}
+
 // Patient Search DTOs
 public class PatientSearchDto
 {
@@ -231,4 +273,9 @@ public class UpdateUserDTO
 public class AssignRoleDTO
 {
     public string RoleName { get; set; } = string.Empty;
+}
+
+public class ToggleStatusDTO
+{
+    public bool IsActive { get; set; }
 }

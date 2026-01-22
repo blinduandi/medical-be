@@ -580,6 +580,130 @@ public class AppointmentController : BaseApiController
         }
     }
 
+    /// <summary>
+    /// Complete appointment and create medical record (Doctor only, within 1 hour after appointment)
+    /// </summary>
+    [HttpPost("{id:int}/complete")]
+    [Authorize(Roles = "Doctor")]
+    public async Task<IActionResult> CompleteAppointmentWithRecord(int id, [FromBody] CreateMedicalRecordDto medicalRecordDto)
+    {
+        try
+        {
+            var doctorId = User.GetUserId();
+            
+            // Get appointment with navigation properties
+            var appointment = await _context.Appointments
+                .Include(a => a.Patient)
+                .FirstOrDefaultAsync(a => a.Id == id && a.DoctorId == doctorId);
+
+            if (appointment == null)
+                return NotFoundResponse("Appointment not found or you don't have permission");
+
+            // Check if appointment is already completed or cancelled
+            if (appointment.Status == AppointmentStatus.Completed)
+                return ValidationErrorResponse("Appointment is already completed");
+
+            if (appointment.Status == AppointmentStatus.Cancelled)
+                return ValidationErrorResponse("Cannot complete a cancelled appointment");
+
+            var now = DateTime.UtcNow;
+            var appointmentEndTime = appointment.AppointmentDate.Add(appointment.Duration);
+
+            // Check if appointment time has passed
+            if (now < appointmentEndTime)
+                return ValidationErrorResponse("Cannot complete appointment before it ends");
+
+            // Check if within 1 hour window after appointment end
+            var oneHourAfterEnd = appointmentEndTime.AddHours(1);
+            if (now > oneHourAfterEnd)
+                return ValidationErrorResponse("The window to complete this appointment has closed. You can only add medical records within 1 hour after the appointment ends.");
+
+            // Create medical record
+            var medicalRecord = new MedicalRecord
+            {
+                PatientId = appointment.PatientId,
+                DoctorId = doctorId,
+                AppointmentId = appointment.Id,
+                Diagnosis = medicalRecordDto.Diagnosis,
+                Symptoms = medicalRecordDto.Symptoms,
+                Treatment = medicalRecordDto.Treatment,
+                Prescription = medicalRecordDto.Prescription,
+                Notes = medicalRecordDto.Notes,
+                RecordDate = medicalRecordDto.RecordDate ?? now,
+                CreatedAt = now
+            };
+
+            _context.MedicalRecords.Add(medicalRecord);
+
+            // Update appointment status to completed
+            appointment.Status = AppointmentStatus.Completed;
+            appointment.UpdatedAt = now;
+
+            await _context.SaveChangesAsync();
+
+            await _auditService.LogAuditAsync(doctorId, "AppointmentCompleted", $"Completed appointment {id} and created medical record", "Appointment", null, Request.GetClientIpAddress());
+
+            return SuccessResponse(new 
+            { 
+                appointmentId = appointment.Id,
+                medicalRecordId = medicalRecord.Id,
+                message = "Appointment completed and medical record created successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing appointment {AppointmentId}", id);
+            return InternalServerErrorResponse("Failed to complete appointment");
+        }
+    }
+
+    /// <summary>
+    /// Check if appointment can be completed (is within 1 hour window)
+    /// </summary>
+    [HttpGet("{id:int}/can-complete")]
+    [Authorize(Roles = "Doctor")]
+    public async Task<IActionResult> CanCompleteAppointment(int id)
+    {
+        try
+        {
+            var doctorId = User.GetUserId();
+            var appointment = await _context.Appointments
+                .FirstOrDefaultAsync(a => a.Id == id && a.DoctorId == doctorId);
+
+            if (appointment == null)
+                return NotFoundResponse("Appointment not found");
+
+            var now = DateTime.UtcNow;
+            var appointmentEndTime = appointment.AppointmentDate.Add(appointment.Duration);
+            var oneHourAfterEnd = appointmentEndTime.AddHours(1);
+
+            var canComplete = appointment.Status != AppointmentStatus.Completed &&
+                            appointment.Status != AppointmentStatus.Cancelled &&
+                            now >= appointmentEndTime &&
+                            now <= oneHourAfterEnd;
+
+            var minutesRemaining = canComplete ? (int)(oneHourAfterEnd - now).TotalMinutes : 0;
+
+            return SuccessResponse(new
+            {
+                canComplete,
+                status = appointment.Status.ToString(),
+                appointmentEndTime,
+                windowExpiresAt = oneHourAfterEnd,
+                minutesRemaining,
+                isPast = now >= appointmentEndTime,
+                message = canComplete 
+                    ? $"You have {minutesRemaining} minutes to complete this appointment" 
+                    : "Appointment cannot be completed at this time"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking appointment completion status {AppointmentId}", id);
+            return InternalServerErrorResponse("Failed to check appointment status");
+        }
+    }
+
 
     public class StatusChangeRequest
     {

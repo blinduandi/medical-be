@@ -582,6 +582,119 @@ namespace medical_be.Controllers
         }
 
         /// <summary>
+        /// Get all medical records created by the current doctor
+        /// </summary>
+        [HttpGet("medical-records")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GetMyMedicalRecords([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        {
+            try
+            {
+                var doctorId = User.GetUserId();
+
+                var query = _context.MedicalRecords
+                    .Where(mr => mr.DoctorId == doctorId)
+                    .Include(mr => mr.Patient)
+                    .Include(mr => mr.Doctor)
+                    .OrderByDescending(mr => mr.RecordDate);
+
+                var totalRecords = await query.CountAsync();
+                
+                var medicalRecords = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(mr => new MedicalRecordDto
+                    {
+                        Id = mr.Id,
+                        PatientId = mr.PatientId,
+                        DoctorId = mr.DoctorId,
+                        AppointmentId = mr.AppointmentId,
+                        Diagnosis = mr.Diagnosis,
+                        Symptoms = mr.Symptoms,
+                        Treatment = mr.Treatment,
+                        Prescription = mr.Prescription,
+                        Notes = mr.Notes,
+                        RecordDate = mr.RecordDate,
+                        CreatedAt = mr.CreatedAt,
+                        UpdatedAt = mr.UpdatedAt,
+                        PatientName = mr.Patient.FirstName + " " + mr.Patient.LastName,
+                        DoctorName = mr.Doctor.FirstName + " " + mr.Doctor.LastName
+                    })
+                    .ToListAsync();
+
+                return SuccessResponse(new
+                {
+                    medicalRecords,
+                    pagination = new
+                    {
+                        currentPage = page,
+                        pageSize,
+                        totalRecords,
+                        totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize)
+                    }
+                }, $"Retrieved {medicalRecords.Count} medical records");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving medical records for doctor: {DoctorId}", User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving medical records");
+            }
+        }
+
+        /// <summary>
+        /// Get medical records for a specific patient created by the current doctor
+        /// </summary>
+        [HttpGet("medical-records/patient/{patientId}")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GetPatientMedicalRecords(string patientId)
+        {
+            try
+            {
+                var doctorId = User.GetUserId();
+
+                var medicalRecords = await _context.MedicalRecords
+                    .Where(mr => mr.DoctorId == doctorId && mr.PatientId == patientId)
+                    .Include(mr => mr.Patient)
+                    .Include(mr => mr.Doctor)
+                    .OrderByDescending(mr => mr.RecordDate)
+                    .Select(mr => new MedicalRecordDto
+                    {
+                        Id = mr.Id,
+                        PatientId = mr.PatientId,
+                        DoctorId = mr.DoctorId,
+                        AppointmentId = mr.AppointmentId,
+                        Diagnosis = mr.Diagnosis,
+                        Symptoms = mr.Symptoms,
+                        Treatment = mr.Treatment,
+                        Prescription = mr.Prescription,
+                        Notes = mr.Notes,
+                        RecordDate = mr.RecordDate,
+                        CreatedAt = mr.CreatedAt,
+                        UpdatedAt = mr.UpdatedAt,
+                        PatientName = mr.Patient.FirstName + " " + mr.Patient.LastName,
+                        DoctorName = mr.Doctor.FirstName + " " + mr.Doctor.LastName
+                    })
+                    .ToListAsync();
+
+                // Log access
+                await _patientAccessLogService.LogPatientAccessAsync(
+                    doctorId,
+                    patientId,
+                    "ViewPatientMedicalRecords",
+                    $"Viewed {medicalRecords.Count} medical records for patient",
+                    Request.GetClientIpAddress()
+                );
+
+                return SuccessResponse(medicalRecords, $"Retrieved {medicalRecords.Count} medical records for patient");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving medical records for patient: {PatientId} by doctor: {DoctorId}", patientId, User.GetUserId());
+                return InternalServerErrorResponse("An error occurred while retrieving medical records");
+            }
+        }
+
+        /// <summary>
         /// Link a patient to the current doctor by email or IDNP
         /// </summary>
         [HttpPost("link-patient")]
@@ -741,6 +854,5 @@ namespace medical_be.Controllers
                 return InternalServerErrorResponse("Failed to unlink patient");
             }
         }
-
-            }
+    }
 }

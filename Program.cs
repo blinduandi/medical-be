@@ -48,14 +48,23 @@ builder.Services.AddHostedService<MedicalMonitoringBackgroundService>();
 // ---------------- Quartz Setup ----------------
 builder.Services.AddQuartz(q =>
 {
-    var jobKey = new JobKey("NotificationJob");
-    q.AddJob<NotificationJob>(opts => opts.WithIdentity(jobKey));
-
+    // Notification Job - runs every 30 seconds
+    var notificationJobKey = new JobKey("NotificationJob");
+    q.AddJob<NotificationJob>(opts => opts.WithIdentity(notificationJobKey));
     q.AddTrigger(opts => opts
-        .ForJob(jobKey)
+        .ForJob(notificationJobKey)
         .WithIdentity("NotificationJob-trigger")
         .StartNow()
-        .WithSimpleSchedule(x => x.WithIntervalInSeconds(30).RepeatForever())); 
+        .WithSimpleSchedule(x => x.WithIntervalInSeconds(30).RepeatForever()));
+
+    // Appointment Status Job - runs every 5 minutes to mark past appointments as completed
+    var appointmentStatusJobKey = new JobKey("AppointmentStatusJob");
+    q.AddJob<medical_be.Jobs.AppointmentStatusJob>(opts => opts.WithIdentity(appointmentStatusJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(appointmentStatusJobKey)
+        .WithIdentity("AppointmentStatusJob-trigger")
+        .StartNow()
+        .WithSimpleSchedule(x => x.WithIntervalInMinutes(5).RepeatForever()));
 });
 
 // Hosted service for Quartz
