@@ -75,10 +75,12 @@ public class VerifyMfaLoginDto
 
 public class AuthResponseDto
 {
-    public string Token { get; set; } = string.Empty;
-    public DateTime Expiration { get; set; }
+    public string? Token { get; set; }
+    public DateTime? Expiration { get; set; }
     public UserDto User { get; set; } = null!;
     public bool RequiresMfa { get; set; } = false;
+    public bool RequiresPasswordChange { get; set; } = false;
+    public string? PasswordChangeToken { get; set; }
 }
 
 public class UserDto
@@ -175,6 +177,65 @@ public class RegistrationResultDto
 {
     public bool Success { get; set; }
     public AuthResponseDto? AuthResponse { get; set; }
+    public List<string> Errors { get; set; } = new();
+    public string Message { get; set; } = string.Empty;
+}
+
+public class ForgotPasswordDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ResetPasswordDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string ResetCode { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(6)]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required]
+    [Compare("NewPassword")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
+public class ResetPasswordResponseDto
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
+public class ChangePasswordWithTokenDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string PasswordChangeToken { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(6)]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required]
+    [Compare("NewPassword")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
+public class DoctorCreationResultDto
+{
+    public bool Success { get; set; }
+    public AuthResponseDto? AuthResponse { get; set; }
+    public string? TemporaryPassword { get; set; }
+    public DateTime? PasswordExpiresAt { get; set; }
     public List<string> Errors { get; set; } = new();
     public string Message { get; set; } = string.Empty;
 }

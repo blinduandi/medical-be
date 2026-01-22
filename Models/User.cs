@@ -47,6 +47,10 @@ public class User : IdentityUser
     public DateTime? VerificationCodeExpires { get; set; }
     public bool IsEmailVerified { get; set; } = false;
 
+    // Temporary password fields (for doctor accounts created by admin)
+    public bool MustChangePassword { get; set; } = false;
+    public DateTime? TemporaryPasswordExpires { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public bool IsActive { get; set; } = true;
