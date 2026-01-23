@@ -5,7 +5,7 @@
 namespace medical_be.Migrations
 {
     /// <inheritdoc />
-    public partial class AddPatientDoctorsTable : Migration
+    public partial class AddPatientDoctorTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -32,7 +32,7 @@ namespace medical_be.Migrations
                         column: x => x.DoctorId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_PatientDoctors_AspNetUsers_PatientId",
                         column: x => x.PatientId,

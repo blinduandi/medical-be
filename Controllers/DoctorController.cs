@@ -747,5 +747,165 @@ namespace medical_be.Controllers
             }
         }
 
+        /// <summary>
+        /// Link a patient to the current doctor by email or IDNP
+        /// </summary>
+        [HttpPost("link-patient")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<IActionResult> LinkPatient([FromBody] LinkPatientDto dto)
+        {
+            try
+            {
+                var modelValidation = ValidateModel();
+                if (modelValidation != null) return modelValidation;
+
+                // Must provide either email or IDNP
+                if (string.IsNullOrWhiteSpace(dto.Email) && string.IsNullOrWhiteSpace(dto.IDNP))
+                {
+                    return ValidationErrorResponse("Either Email or IDNP must be provided");
+                }
+
+                var doctorId = User.GetUserId();
+
+                // Find patient by email or IDNP
+                User? patient = null;
+                if (!string.IsNullOrWhiteSpace(dto.Email))
+                {
+                    patient = await _context.Users
+                        .Include(u => u.UserRoles)
+                        .ThenInclude(ur => ur.Role)
+                        .FirstOrDefaultAsync(u => u.Email == dto.Email);
+                }
+                else if (!string.IsNullOrWhiteSpace(dto.IDNP))
+                {
+                    patient = await _context.Users
+                        .Include(u => u.UserRoles)
+                        .ThenInclude(ur => ur.Role)
+                        .FirstOrDefaultAsync(u => u.IDNP == dto.IDNP);
+                }
+
+                if (patient == null)
+                {
+                    return NotFoundResponse("Patient not found");
+                }
+
+                // Verify the user is actually a patient
+                if (!patient.UserRoles.Any(ur => ur.Role.Name == "Patient"))
+                {
+                    return ValidationErrorResponse("The specified user is not a patient");
+                }
+
+                // Check if already linked
+                var existingRelationship = await _context.PatientDoctors
+                    .FirstOrDefaultAsync(pd => pd.PatientId == patient.Id && pd.DoctorId == doctorId);
+
+                if (existingRelationship != null)
+                {
+                    if (existingRelationship.IsActive)
+                    {
+                        return ValidationErrorResponse("Patient is already linked to you");
+                    }
+                    else
+                    {
+                        // Reactivate the relationship
+                        existingRelationship.IsActive = true;
+                        existingRelationship.DeactivatedDate = null;
+                        existingRelationship.Notes = dto.Notes ?? existingRelationship.Notes;
+                        await _context.SaveChangesAsync();
+
+                        await _auditService.LogAuditAsync(
+                            doctorId,
+                            "PatientDoctorReactivated",
+                            $"Reactivated patient-doctor relationship with patient {patient.Email}",
+                            "PatientDoctor",
+                            null,
+                            Request.GetClientIpAddress());
+
+                        return SuccessResponse(null, "Patient successfully re-linked");
+                    }
+                }
+
+                // Create new relationship
+                var patientDoctorLink = new PatientDoctor
+                {
+                    PatientId = patient.Id,
+                    DoctorId = doctorId,
+                    AssignedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    AssignedBy = "Doctor",
+                    Notes = dto.Notes ?? $"Linked by doctor on {DateTime.UtcNow:yyyy-MM-dd}"
+                };
+
+                _context.PatientDoctors.Add(patientDoctorLink);
+                await _context.SaveChangesAsync();
+
+                await _auditService.LogAuditAsync(
+                    doctorId,
+                    "PatientDoctorLinked",
+                    $"Linked patient {patient.Email} to doctor",
+                    "PatientDoctor",
+                    null,
+                    Request.GetClientIpAddress());
+
+                _logger.LogInformation("Doctor {DoctorId} linked patient {PatientId}", doctorId, patient.Id);
+
+                return SuccessResponse(new
+                {
+                    PatientName = $"{patient.FirstName} {patient.LastName}",
+                    PatientEmail = patient.Email,
+                    LinkedDate = patientDoctorLink.AssignedDate
+                }, "Patient successfully linked");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error linking patient");
+                return InternalServerErrorResponse("Failed to link patient");
+            }
+        }
+
+        /// <summary>
+        /// Unlink/deactivate a patient from the current doctor
+        /// </summary>
+        [HttpPost("unlink-patient/{patientId}")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<IActionResult> UnlinkPatient(string patientId, [FromBody] string? reason = null)
+        {
+            try
+            {
+                var doctorId = User.GetUserId();
+
+                var relationship = await _context.PatientDoctors
+                    .FirstOrDefaultAsync(pd => pd.PatientId == patientId && pd.DoctorId == doctorId && pd.IsActive);
+
+                if (relationship == null)
+                {
+                    return NotFoundResponse("Active patient-doctor relationship not found");
+                }
+
+                relationship.IsActive = false;
+                relationship.DeactivatedDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(reason))
+                {
+                    relationship.Notes = $"{relationship.Notes}\nDeactivated: {reason}";
+                }
+
+                await _context.SaveChangesAsync();
+
+                await _auditService.LogAuditAsync(
+                    doctorId,
+                    "PatientDoctorUnlinked",
+                    $"Unlinked patient {patientId}. Reason: {reason}",
+                    "PatientDoctor",
+                    null,
+                    Request.GetClientIpAddress());
+
+                return SuccessResponse(null, "Patient successfully unlinked");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unlinking patient");
+                return InternalServerErrorResponse("Failed to unlink patient");
+            }
+        }
+    }
 }
