@@ -134,6 +134,8 @@ public class CalendarController : BaseApiController
             if (string.IsNullOrEmpty(userId))
                 return UnauthorizedResponse("User not found");
 
+            _logger.LogInformation("Calendar request for userId: {UserId}", userId);
+
             var user = await _context.Users
                 .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
@@ -142,11 +144,21 @@ public class CalendarController : BaseApiController
                 return NotFoundResponse("User not found");
 
             var isDoctor = user.UserRoles.Any(ur => ur.Role.Name == "Doctor");
+            _logger.LogInformation("User {UserId} is doctor: {IsDoctor}, Roles: {Roles}", 
+                userId, isDoctor, string.Join(", ", user.UserRoles.Select(ur => ur.Role.Name)));
 
             // Default to current month if no dates provided
             var startDate = start ?? new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
             var endDate = end ?? startDate.AddMonths(1).AddDays(-1);
             endDate = endDate.Date.AddDays(1).AddTicks(-1);
+
+            _logger.LogInformation("Searching appointments between {Start} and {End}", startDate, endDate);
+
+            // First check total appointments without user filter
+            var totalAppointments = await _context.Appointments
+                .Where(a => a.AppointmentDate >= startDate && a.AppointmentDate <= endDate)
+                .CountAsync();
+            _logger.LogInformation("Total appointments in date range: {Count}", totalAppointments);
 
             var query = _context.Appointments
                 .AsNoTracking()
@@ -155,11 +167,9 @@ public class CalendarController : BaseApiController
                 .Where(a => a.AppointmentDate >= startDate && a.AppointmentDate <= endDate)
                 .AsQueryable();
 
-            // Filter based on user role
-            if (isDoctor)
-                query = query.Where(a => a.DoctorId == userId);
-            else
-                query = query.Where(a => a.PatientId == userId);
+            // Show appointments where user is either doctor or patient
+            _logger.LogInformation("Filtering by userId as DoctorId OR PatientId: {UserId}", userId);
+            query = query.Where(a => a.DoctorId == userId || a.PatientId == userId);
 
             if (status.HasValue)
                 query = query.Where(a => a.Status == status);
@@ -167,6 +177,8 @@ public class CalendarController : BaseApiController
             var appointments = await query
                 .OrderBy(a => a.AppointmentDate)
                 .ToListAsync();
+
+            _logger.LogInformation("Found {Count} appointments for user {UserId}", appointments.Count, userId);
 
             var events = appointments.Select(a => new CalendarEventDto
             {

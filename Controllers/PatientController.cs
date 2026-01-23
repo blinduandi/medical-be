@@ -727,7 +727,7 @@ namespace medical_be.Controllers
             }
         }
 
-        /// <summary>
+           /// <summary>
         /// Get patient's medical records
         /// </summary>
         [HttpGet("{patientId}/medical-records")]

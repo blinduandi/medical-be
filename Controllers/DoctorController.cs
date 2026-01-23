@@ -283,45 +283,73 @@ namespace medical_be.Controllers
                 var userId = User.GetUserId();
 
                 var query = _context.PatientDoctors
-                    .Where(pd => pd.DoctorId == userId && pd.IsActive)
-                    .Include(pd => pd.Patient);
+                    .Where(pd => pd.DoctorId == userId && pd.IsActive);
 
                 var totalCount = await query.CountAsync();
                 var skip = (page - 1) * pageSize;
 
+                // Get patient-doctor relationships with patient info (no nested queries)
                 var doctorPatients = await query
                     .Skip(skip)
                     .Take(pageSize)
-                    .Select(pd => new DoctorPatientDto
+                    .Select(pd => new
                     {
-                        Id = pd.Id,
-                        PatientId = pd.PatientId,
-                        PatientName = pd.Patient.FirstName + " " + pd.Patient.LastName,
+                        pd.Id,
+                        pd.PatientId,
+                        pd.AssignedDate,
+                        pd.IsActive,
+                        pd.Notes,
+                        pd.AssignedBy,
+                        PatientFirstName = pd.Patient.FirstName,
+                        PatientLastName = pd.Patient.LastName,
                         PatientEmail = pd.Patient.Email ?? "",
-                        PatientPhoneNumber = pd.Patient.PhoneNumber,
+                        PatientPhone = pd.Patient.PhoneNumber,
                         PatientIDNP = pd.Patient.IDNP,
-                        BloodType = pd.Patient.BloodType,
-                        DateOfBirth = pd.Patient.DateOfBirth,
-                        AssignedDate = pd.AssignedDate,
-                        IsActive = pd.IsActive,
-                        Notes = pd.Notes,
-                        AssignedBy = pd.AssignedBy,
-                        LastVisit = _context.VisitRecords
-                            .Where(v => v.PatientId == pd.PatientId && v.DoctorId == userId)
-                            .OrderByDescending(v => v.VisitDate)
-                            .Select(v => v.VisitDate)
-                            .FirstOrDefault(),
-                        TotalVisits = _context.VisitRecords
-                            .Count(v => v.PatientId == pd.PatientId && v.DoctorId == userId)
+                        PatientBloodType = pd.Patient.BloodType,
+                        PatientDOB = pd.Patient.DateOfBirth
                     })
                     .ToListAsync();
+
+                // Get patient IDs for visit queries
+                var patientIds = doctorPatients.Select(p => p.PatientId).ToList();
+
+                // Get visit statistics separately to avoid nested query translation issues
+                var visitStats = await _context.VisitRecords
+                    .Where(v => patientIds.Contains(v.PatientId) && v.DoctorId == userId)
+                    .GroupBy(v => v.PatientId)
+                    .Select(g => new
+                    {
+                        PatientId = g.Key,
+                        LastVisit = g.Max(v => v.VisitDate),
+                        TotalVisits = g.Count()
+                    })
+                    .ToListAsync();
+
+                // Combine the data in memory
+                var result = doctorPatients.Select(pd => new DoctorPatientDto
+                {
+                    Id = pd.Id,
+                    PatientId = pd.PatientId,
+                    PatientName = pd.PatientFirstName + " " + pd.PatientLastName,
+                    PatientEmail = pd.PatientEmail,
+                    PatientPhoneNumber = pd.PatientPhone,
+                    PatientIDNP = pd.PatientIDNP,
+                    BloodType = pd.PatientBloodType,
+                    DateOfBirth = pd.PatientDOB,
+                    AssignedDate = pd.AssignedDate,
+                    IsActive = pd.IsActive,
+                    Notes = pd.Notes,
+                    AssignedBy = pd.AssignedBy,
+                    LastVisit = visitStats.FirstOrDefault(vs => vs.PatientId == pd.PatientId)?.LastVisit,
+                    TotalVisits = visitStats.FirstOrDefault(vs => vs.PatientId == pd.PatientId)?.TotalVisits ?? 0
+                }).ToList();
 
                 return Ok(new
                 {
                     success = true,
                     error = false,
                     message = "Doctor's patients retrieved successfully",
-                    data = doctorPatients,
+                    data = result,
                     pagination = new
                     {
                         currentPage = page,
@@ -336,7 +364,13 @@ namespace medical_be.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving patients for doctor: {DoctorId}", User.GetUserId());
-                return StatusCode(500, new { message = "An error occurred while retrieving patients" });
+                return StatusCode(500, new { 
+                    success = false,
+                    error = true,
+                    message = "An error occurred while retrieving patients",
+                    details = ex.Message,
+                    innerException = ex.InnerException?.Message
+                });
             }
         }
 

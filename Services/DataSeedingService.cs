@@ -113,6 +113,7 @@ public class DataSeedingService : IDataSeedingService
             var totalBatches = (int)Math.Ceiling((double)userCount / batchSize);
             int totalUsersCreated = 0, totalVisitsCreated = 0, totalAllergiesCreated = 0;
             int totalVaccinationsCreated = 0, totalLabResultsCreated = 0, totalDiagnosesCreated = 0;
+            int totalAppointmentsCreated = 0, totalRatingsCreated = 0;
 
             for (int batch = 0; batch < totalBatches; batch++)
             {
@@ -122,6 +123,8 @@ public class DataSeedingService : IDataSeedingService
 
                 var batchResult = await SeedUserBatch(currentBatchSize, existingGeneratedUsers + batch * batchSize);
                 totalUsersCreated += batchResult.UsersCreated;
+                totalAppointmentsCreated += batchResult.AppointmentsCreated;
+                totalRatingsCreated += batchResult.RatingsCreated;
                 totalVisitsCreated += batchResult.VisitsCreated;
                 totalAllergiesCreated += batchResult.AllergiesCreated;
                 totalVaccinationsCreated += batchResult.VaccinationsCreated;
@@ -133,6 +136,8 @@ public class DataSeedingService : IDataSeedingService
             }
 
             result.UsersCreated = totalUsersCreated;
+            result.AppointmentsCreated = totalAppointmentsCreated;
+            result.RatingsCreated = totalRatingsCreated;
             result.VisitsCreated = totalVisitsCreated;
             result.AllergiesCreated = totalAllergiesCreated;
             result.VaccinationsCreated = totalVaccinationsCreated;
@@ -168,65 +173,150 @@ public class DataSeedingService : IDataSeedingService
         var vaccinations = new List<Vaccination>();
         var labResults = new List<LabResult>();
         var diagnoses = new List<Diagnosis>();
+        var appointments = new List<Appointment>();
+        var ratings = new List<Rating>();
 
-        // Create users for this batch
-        for (int i = 0; i < batchSize; i++)
+        // Determine doctors vs patients ratio (20% doctors, 80% patients)
+        var doctorCount = (int)(batchSize * 0.2);
+        var patientCount = batchSize - doctorCount;
+        
+        var doctors = new List<User>();
+        var patients = new List<User>();
+
+        // Create doctors first
+        for (int i = 0; i < doctorCount; i++)
         {
             var userIndex = startIndex + i;
-            var user = CreateRandomUser(userIndex);
-            users.Add(user);
+            var doctor = CreateRandomDoctor(userIndex);
+            doctors.Add(doctor);
+            users.Add(doctor);
         }
 
-        // Add users to context
+        // Create patients
+        for (int i = 0; i < patientCount; i++)
+        {
+            var userIndex = startIndex + doctorCount + i;
+            var patient = CreateRandomPatient(userIndex);
+            patients.Add(patient);
+            users.Add(patient);
+        }
+
+        // Add users to context and assign roles
         _context.Users.AddRange(users);
         await _context.SaveChangesAsync();
-
-        // Now create medical data for each user
-        foreach (var user in users)
+        
+        // Assign roles
+        var doctorRole = await _context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "DOCTOR");
+        var patientRole = await _context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "PATIENT");
+        
+        if (doctorRole != null)
         {
-            // Create visit records (0-20 visits per patient)
-            var visitCount = _random.Next(0, 21);
+            foreach (var doctor in doctors)
+            {
+                await _userManager.AddToRoleAsync(doctor, "Doctor");
+            }
+        }
+        
+        if (patientRole != null)
+        {
+            foreach (var patient in patients)
+            {
+                await _userManager.AddToRoleAsync(patient, "Patient");
+            }
+        }
+
+        // Create appointments between patients and doctors
+        if (doctors.Any() && patients.Any())
+        {
+            foreach (var patient in patients)
+            {
+                var appointmentCount = _random.Next(2, 8); // 2-7 appointments per patient
+                for (int a = 0; a < appointmentCount; a++)
+                {
+                    var doctor = doctors[_random.Next(doctors.Count)];
+                    appointments.Add(CreateRandomAppointment(patient.Id, doctor.Id));
+                }
+            }
+        }
+
+        // Create ratings for doctors
+        foreach (var doctor in doctors)
+        {
+            var ratingCount = _random.Next(5, 25); // 5-24 ratings per doctor
+            var ratedPatients = new HashSet<string>();
+            
+            for (int r = 0; r < ratingCount && ratedPatients.Count < patients.Count; r++)
+            {
+                var patient = patients[_random.Next(patients.Count)];
+                if (!ratedPatients.Contains(patient.Id))
+                {
+                    ratedPatients.Add(patient.Id);
+                    ratings.Add(CreateRandomRating(patient.Id, doctor.Id));
+                }
+            }
+        }
+
+        // Now create medical data for each patient
+        foreach (var patient in patients)
+        {
+            // Select a random doctor for medical records
+            var assignedDoctor = doctors.Any() ? doctors[_random.Next(doctors.Count)].Id : patient.Id;
+            
+            // Create visit records (2-15 visits per patient)
+            var visitCount = _random.Next(2, 16);
             for (int v = 0; v < visitCount; v++)
             {
-                visitRecords.Add(CreateRandomVisitRecord(user.Id));
+                visitRecords.Add(CreateRandomVisitRecord(patient.Id, assignedDoctor));
             }
 
-            // Create allergies (0-8 allergies per patient)
-            var allergyCount = _random.Next(0, 9);
+            // Create allergies (0-5 allergies per patient)
+            var allergyCount = _random.Next(0, 6);
             var usedAllergens = new HashSet<string>();
             for (int a = 0; a < allergyCount; a++)
             {
-                var allergy = CreateRandomAllergy(user.Id, usedAllergens);
+                var allergy = CreateRandomAllergy(patient.Id, usedAllergens, assignedDoctor);
                 if (allergy != null)
                     allergies.Add(allergy);
             }
 
-            // Create vaccinations (0-15 vaccinations per patient)
-            var vaccinationCount = _random.Next(0, 16);
+            // Create vaccinations (3-12 vaccinations per patient)
+            var vaccinationCount = _random.Next(3, 13);
             var usedVaccines = new HashSet<string>();
             for (int v = 0; v < vaccinationCount; v++)
             {
-                var vaccination = CreateRandomVaccination(user.Id, usedVaccines);
+                var vaccination = CreateRandomVaccination(patient.Id, usedVaccines, assignedDoctor);
                 if (vaccination != null)
                     vaccinations.Add(vaccination);
             }
 
-            // Create lab results (0-50 lab results per patient)
-            var labCount = _random.Next(0, 51);
+            // Create lab results (5-30 lab results per patient)
+            var labCount = _random.Next(5, 31);
             for (int l = 0; l < labCount; l++)
             {
-                labResults.Add(CreateRandomLabResult(user.Id));
+                labResults.Add(CreateRandomLabResult(patient.Id));
             }
 
-            // Create diagnoses (0-8 diagnoses per patient)
-            var diagnosisCount = _random.Next(0, 9);
+            // Create diagnoses (1-6 diagnoses per patient)
+            var diagnosisCount = _random.Next(1, 7);
             for (int d = 0; d < diagnosisCount; d++)
             {
-                diagnoses.Add(CreateRandomDiagnosis(user.Id));
+                diagnoses.Add(CreateRandomDiagnosis(patient.Id, assignedDoctor));
             }
         }
 
         // Add all medical data in batches to avoid memory issues
+        if (appointments.Any())
+        {
+            _context.Appointments.AddRange(appointments);
+            await _context.SaveChangesAsync();
+        }
+
+        if (ratings.Any())
+        {
+            _context.Ratings.AddRange(ratings);
+            await _context.SaveChangesAsync();
+        }
+
         if (visitRecords.Any())
         {
             _context.VisitRecords.AddRange(visitRecords);
@@ -260,6 +350,10 @@ public class DataSeedingService : IDataSeedingService
         return new BatchResult
         {
             UsersCreated = users.Count,
+            DoctorsCreated = doctors.Count,
+            PatientsCreated = patients.Count,
+            AppointmentsCreated = appointments.Count,
+            RatingsCreated = ratings.Count,
             VisitsCreated = visitRecords.Count,
             AllergiesCreated = allergies.Count,
             VaccinationsCreated = vaccinations.Count,
@@ -268,7 +362,7 @@ public class DataSeedingService : IDataSeedingService
         };
     }
 
-    private User CreateRandomUser(int index)
+    private User CreateRandomDoctor(int index)
     {
         var gender = _random.Next(2) == 0 ? Gender.Male : Gender.Female;
         var firstName = gender == Gender.Male 
@@ -276,14 +370,22 @@ public class DataSeedingService : IDataSeedingService
             : _firstNamesFemale[_random.Next(_firstNamesFemale.Length)];
         var lastName = _lastNames[_random.Next(_lastNames.Length)];
         
-        var birthDate = DateTime.Now.AddYears(-_random.Next(18, 90))
+        var birthDate = DateTime.Now.AddYears(-_random.Next(30, 65))
                                    .AddDays(-_random.Next(0, 365));
 
-        var user = new User
+        var specialties = new[] { DoctorSpecialty.Cardiology, DoctorSpecialty.Neurology, DoctorSpecialty.Pediatrics, 
+                                  DoctorSpecialty.Orthopedics, DoctorSpecialty.Dermatology, DoctorSpecialty.Oncology, 
+                                  DoctorSpecialty.Psychiatry, DoctorSpecialty.Surgery, DoctorSpecialty.Radiology, 
+                                  DoctorSpecialty.Endocrinology, DoctorSpecialty.Gastroenterology, DoctorSpecialty.Pulmonology,
+                                  DoctorSpecialty.GeneralPractice, DoctorSpecialty.Gynecology };
+
+        return new User
         {
             Id = Guid.NewGuid().ToString(),
-            UserName = $"user{index:D6}@medical.com",
-            Email = $"user{index:D6}@medical.com",
+            UserName = $"doctor{index:D6}@medical.com",
+            Email = $"doctor{index:D6}@medical.com",
+            NormalizedEmail = $"DOCTOR{index:D6}@MEDICAL.COM",
+            NormalizedUserName = $"DOCTOR{index:D6}@MEDICAL.COM",
             EmailConfirmed = true,
             IDNP = GenerateIDNP(),
             FirstName = firstName,
@@ -293,16 +395,53 @@ public class DataSeedingService : IDataSeedingService
             Gender = gender,
             BloodType = _bloodTypes[_random.Next(_bloodTypes.Length)],
             Address = GenerateRandomAddress(),
-            ClinicId = _random.Next(100) < 10 ? $"CLINIC_{_random.Next(1, 6)}" : null, // 10% are doctors
-            CreatedAt = DateTime.UtcNow.AddDays(-_random.Next(0, 365)),
-            IsActive = _random.Next(100) < 95, // 95% are active
-            IsEmailVerified = true
+            Specialty = specialties[_random.Next(specialties.Length)],
+            Experience = $"{_random.Next(2, 35)} years",
+            ClinicId = $"CLINIC_{_random.Next(1, 11)}",
+            CreatedAt = DateTime.UtcNow.AddDays(-_random.Next(365, 1825)),
+            IsActive = true,
+            IsEmailVerified = true,
+            SecurityStamp = Guid.NewGuid().ToString(),
+            ConcurrencyStamp = Guid.NewGuid().ToString()
         };
-
-        return user;
     }
 
-    private VisitRecord CreateRandomVisitRecord(string patientId)
+    private User CreateRandomPatient(int index)
+    {
+        var gender = _random.Next(2) == 0 ? Gender.Male : Gender.Female;
+        var firstName = gender == Gender.Male 
+            ? _firstNamesMale[_random.Next(_firstNamesMale.Length)]
+            : _firstNamesFemale[_random.Next(_firstNamesFemale.Length)];
+        var lastName = _lastNames[_random.Next(_lastNames.Length)];
+        
+        var birthDate = DateTime.Now.AddYears(-_random.Next(1, 95))
+                                   .AddDays(-_random.Next(0, 365));
+
+        return new User
+        {
+            Id = Guid.NewGuid().ToString(),
+            UserName = $"patient{index:D6}@medical.com",
+            Email = $"patient{index:D6}@medical.com",
+            NormalizedEmail = $"PATIENT{index:D6}@MEDICAL.COM",
+            NormalizedUserName = $"PATIENT{index:D6}@MEDICAL.COM",
+            EmailConfirmed = true,
+            IDNP = GenerateIDNP(),
+            FirstName = firstName,
+            LastName = lastName,
+            PhoneNumber = GeneratePhoneNumber(),
+            DateOfBirth = birthDate,
+            Gender = gender,
+            BloodType = _bloodTypes[_random.Next(_bloodTypes.Length)],
+            Address = GenerateRandomAddress(),
+            CreatedAt = DateTime.UtcNow.AddDays(-_random.Next(0, 730)),
+            IsActive = _random.Next(100) < 98, // 98% are active
+            IsEmailVerified = true,
+            SecurityStamp = Guid.NewGuid().ToString(),
+            ConcurrencyStamp = Guid.NewGuid().ToString()
+        };
+    }
+
+    private VisitRecord CreateRandomVisitRecord(string patientId, string doctorId)
     {
         var visitTypes = Enum.GetValues<VisitType>();
         var visitDate = DateTime.UtcNow.AddDays(-_random.Next(0, 730)); // Last 2 years
@@ -310,18 +449,66 @@ public class DataSeedingService : IDataSeedingService
         return new VisitRecord
         {
             PatientId = patientId,
-            DoctorId = patientId, // Simplified - using same ID
+            DoctorId = doctorId,
             VisitDate = visitDate,
             VisitType = visitTypes[_random.Next(visitTypes.Length)],
             Symptoms = GenerateRandomSymptoms(),
             Diagnosis = GenerateRandomDiagnosis(),
             Treatment = GenerateRandomTreatment(),
+            Prescription = GenerateRandomPrescription(),
             Notes = GenerateRandomNotes(),
             CreatedAt = visitDate.AddMinutes(_random.Next(0, 60))
         };
     }
 
-    private Allergy? CreateRandomAllergy(string patientId, HashSet<string> usedAllergens)
+    private Appointment CreateRandomAppointment(string patientId, string doctorId)
+    {
+        var futureDate = _random.Next(2) == 0; // 50% future, 50% past
+        DateTime appointmentDate;
+        AppointmentStatus status;
+
+        if (futureDate)
+        {
+            appointmentDate = DateTime.UtcNow.AddDays(_random.Next(1, 60));
+            status = _random.Next(10) < 2 ? AppointmentStatus.Cancelled : AppointmentStatus.Scheduled;
+        }
+        else
+        {
+            appointmentDate = DateTime.UtcNow.AddDays(-_random.Next(1, 365));
+            var rand = _random.Next(10);
+            status = rand < 7 ? AppointmentStatus.Completed : 
+                    rand < 9 ? AppointmentStatus.Cancelled : AppointmentStatus.NoShow;
+        }
+
+        var hour = _random.Next(8, 17); // 8 AM to 5 PM
+        appointmentDate = appointmentDate.Date.AddHours(hour).AddMinutes(_random.Next(0, 4) * 15); // 15-min intervals
+
+        return new Appointment
+        {
+            PatientId = patientId,
+            DoctorId = doctorId,
+            AppointmentDate = appointmentDate,
+            Duration = TimeSpan.FromMinutes(_random.Next(2, 5) * 15), // 30, 45, or 60 minutes
+            Status = status,
+            Reason = GenerateRandomComplaint(),
+            Notes = _random.Next(10) < 3 ? GenerateRandomNotes() : null,
+            CreatedAt = appointmentDate.AddDays(-_random.Next(1, 30))
+        };
+    }
+
+    private Rating CreateRandomRating(string patientId, string doctorId)
+    {
+        return new Rating
+        {
+            PatientId = patientId,
+            DoctorId = doctorId,
+            RatingNr = _random.Next(3, 6), // 3-5 stars (mostly positive)
+            RatingCommentary = GenerateRandomRatingComment(),
+            CreatedAt = DateTime.UtcNow.AddDays(-_random.Next(0, 365))
+        };
+    }
+
+    private Allergy? CreateRandomAllergy(string patientId, HashSet<string> usedAllergens, string recordedById)
     {
         var availableAllergens = _allergens.Where(a => !usedAllergens.Contains(a)).ToList();
         if (!availableAllergens.Any()) return null;
@@ -335,7 +522,7 @@ public class DataSeedingService : IDataSeedingService
         return new Allergy
         {
             PatientId = patientId,
-            RecordedById = patientId,
+            RecordedById = recordedById,
             AllergenName = allergen,
             Severity = severities[_random.Next(severities.Length)],
             Reaction = reactions[_random.Next(reactions.Length)],
@@ -345,7 +532,7 @@ public class DataSeedingService : IDataSeedingService
         };
     }
 
-    private Vaccination? CreateRandomVaccination(string patientId, HashSet<string> usedVaccines)
+    private Vaccination? CreateRandomVaccination(string patientId, HashSet<string> usedVaccines, string administeredById)
     {
         var availableVaccines = _vaccines.Where(v => !usedVaccines.Contains(v)).ToList();
         if (!availableVaccines.Any()) return null;
@@ -356,8 +543,7 @@ public class DataSeedingService : IDataSeedingService
         return new Vaccination
         {
             PatientId = patientId,
-            // Use patientId as AdministeredById for now to satisfy FK; replace with actual doctor IDs if available
-            AdministeredById = patientId,
+            AdministeredById = administeredById,
             VaccineName = vaccine,
             DateAdministered = DateTime.UtcNow.AddDays(-_random.Next(0, 1825)),
             BatchNumber = $"BATCH{_random.Next(10000, 99999)}",
@@ -431,7 +617,7 @@ public class DataSeedingService : IDataSeedingService
         };
     }
 
-    private Diagnosis CreateRandomDiagnosis(string patientId)
+    private Diagnosis CreateRandomDiagnosis(string patientId, string doctorId)
     {
         var category = _diagnosisCategories[_random.Next(_diagnosisCategories.Length)];
         var diagnosisName = _diagnosisByCategory.ContainsKey(category) 
@@ -450,12 +636,52 @@ public class DataSeedingService : IDataSeedingService
             Severity = new[] { "Mild", "Moderate", "Severe" }[_random.Next(3)],
             Category = category,
             DiagnosedDate = diagnosedDate,
-            DoctorId = patientId, // Simplified
+            DoctorId = doctorId,
             IsActive = isActive,
             ResolvedDate = !isActive ? diagnosedDate.AddDays(_random.Next(30, 365)) : null,
             Notes = _random.Next(10) < 3 ? "Additional diagnosis notes" : null,
             CreatedAt = diagnosedDate.AddMinutes(_random.Next(0, 60))
         };
+    }
+
+    private string GenerateRandomPrescription()
+    {
+        var medications = new[]
+        {
+            "Lisinopril 10mg once daily",
+            "Metformin 500mg twice daily",
+            "Atorvastatin 20mg at bedtime",
+            "Omeprazole 20mg before breakfast",
+            "Levothyroxine 50mcg once daily",
+            "Amlodipine 5mg once daily",
+            "Metoprolol 25mg twice daily",
+            "Losartan 50mg once daily",
+            "Gabapentin 300mg three times daily",
+            "Sertraline 50mg once daily"
+        };
+        
+        return medications[_random.Next(medications.Length)];
+    }
+
+    private string GenerateRandomRatingComment()
+    {
+        var comments = new[]
+        {
+            "Excellent doctor, very professional and caring",
+            "Great experience, highly recommend",
+            "Very knowledgeable and patient",
+            "Took time to explain everything clearly",
+            "Friendly staff and good bedside manner",
+            "Professional and thorough examination",
+            "Good communication and follow-up",
+            "Helped me understand my condition better",
+            "Quick appointment, efficient service",
+            "Compassionate and understanding",
+            "Experienced and trustworthy",
+            "Would definitely visit again"
+        };
+        
+        return _random.Next(10) < 8 ? comments[_random.Next(comments.Length)] : null;
     }
 
     // Helper methods for generating random data
@@ -578,9 +804,118 @@ public class DataSeedingService : IDataSeedingService
         }
     }
 
+    public async Task<DataSeedingResultDto> SeedPatientsForDoctorAsync(string doctorId, int patientCount = 20)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var result = new DataSeedingResultDto
+        {
+            Success = false,
+            Message = "Seeding patients for doctor",
+            CompletedAt = DateTime.UtcNow
+        };
+
+        try
+        {
+            // Verify doctor exists
+            var doctor = await _context.Users.FindAsync(doctorId);
+            if (doctor == null)
+            {
+                result.Message = "Doctor not found";
+                return result;
+            }
+
+            _logger.LogInformation("Seeding {Count} patients for doctor {DoctorName}...", 
+                patientCount, $"{doctor.FirstName} {doctor.LastName}");
+
+            var patients = new List<User>();
+            var appointments = new List<Appointment>();
+            var ratings = new List<Rating>();
+
+            // Get existing patient count to avoid duplicates
+            var existingPatients = await _context.Users
+                .AsNoTracking()
+                .CountAsync(u => (u.Email ?? string.Empty).StartsWith("patient") && (u.Email ?? string.Empty).EndsWith("@medical.com"));
+
+            // Create patients
+            for (int i = 0; i < patientCount; i++)
+            {
+                var patient = CreateRandomPatient(existingPatients + i);
+                patients.Add(patient);
+            }
+
+            // Add patients to database
+            _context.Users.AddRange(patients);
+            await _context.SaveChangesAsync();
+
+            // Assign patient role
+            var patientRole = await _context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "PATIENT");
+            if (patientRole != null)
+            {
+                foreach (var patient in patients)
+                {
+                    await _userManager.AddToRoleAsync(patient, "Patient");
+                }
+            }
+
+            // Create appointments for each patient with this doctor
+            foreach (var patient in patients)
+            {
+                var appointmentCount = _random.Next(3, 8); // 3-7 appointments per patient
+                for (int a = 0; a < appointmentCount; a++)
+                {
+                    appointments.Add(CreateRandomAppointment(patient.Id, doctorId));
+                }
+            }
+
+            // Create ratings from patients for this doctor
+            foreach (var patient in patients)
+            {
+                if (_random.Next(100) < 70) // 70% chance patient rates the doctor
+                {
+                    ratings.Add(CreateRandomRating(patient.Id, doctorId));
+                }
+            }
+
+            // Save appointments and ratings
+            if (appointments.Any())
+            {
+                _context.Appointments.AddRange(appointments);
+                await _context.SaveChangesAsync();
+            }
+
+            if (ratings.Any())
+            {
+                _context.Ratings.AddRange(ratings);
+                await _context.SaveChangesAsync();
+            }
+
+            result.Success = true;
+            result.PatientsCreated = patients.Count;
+            result.AppointmentsCreated = appointments.Count;
+            result.RatingsCreated = ratings.Count;
+            result.Message = $"Successfully created {patients.Count} patients, {appointments.Count} appointments, and {ratings.Count} ratings for doctor {doctor.FirstName} {doctor.LastName}";
+            result.ProcessingTime = stopwatch.Elapsed;
+            result.CompletedAt = DateTime.UtcNow;
+
+            _logger.LogInformation(result.Message);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error seeding patients for doctor");
+            result.Message = $"Error: {ex.Message}";
+            return result;
+        }
+    }
+
     private class BatchResult
     {
         public int UsersCreated { get; set; }
+        public int DoctorsCreated { get; set; }
+        public int PatientsCreated { get; set; }
+        public int AppointmentsCreated { get; set; }
+        public int RatingsCreated { get; set; }
         public int VisitsCreated { get; set; }
         public int AllergiesCreated { get; set; }
         public int VaccinationsCreated { get; set; }

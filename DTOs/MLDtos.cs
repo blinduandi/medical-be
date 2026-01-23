@@ -269,6 +269,10 @@ public class DataSeedingResultDto
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
     public int UsersCreated { get; set; }
+    public int DoctorsCreated { get; set; }
+    public int PatientsCreated { get; set; }
+    public int AppointmentsCreated { get; set; }
+    public int RatingsCreated { get; set; }
     public int VisitsCreated { get; set; }
     public int AllergiesCreated { get; set; }
     public int VaccinationsCreated { get; set; }

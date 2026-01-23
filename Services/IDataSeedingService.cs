@@ -27,5 +27,12 @@ namespace medical_be.Services
         /// Clear all seeded data (for testing purposes)
         /// </summary>
         Task ClearSeedDataAsync();
+
+        /// <summary>
+        /// Seed patients and ratings for a specific doctor
+        /// </summary>
+        /// <param name="doctorId">Doctor ID to seed patients for</param>
+        /// <param name="patientCount">Number of patients to create</param>
+        Task<DataSeedingResultDto> SeedPatientsForDoctorAsync(string doctorId, int patientCount = 20);
     }
 }

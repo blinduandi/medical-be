@@ -136,6 +136,7 @@ public class MedicalRecordDto
 
 public class CreateMedicalRecordDto
 {
+    public string? PatientId { get; set; }
     public int? AppointmentId { get; set; }
     public string Diagnosis { get; set; } = string.Empty;
     public string? Symptoms { get; set; }
